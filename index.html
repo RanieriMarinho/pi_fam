@@ -132,7 +132,7 @@
           <h2 class="text-lg sm:text-xl font-bold text-fam-navy flex items-center gap-2">
             <i class="fa-solid fa-clipboard-check text-fam-blue"></i> Ficha de Avaliação do PI
           </h2>
-          <p class="text-xs text-gray-500 mt-0.5">Preencha os dados do banner e avalie os critérios obrigatórios abaixo.</p>
+          <p class="text-xs text-gray-500 mt-0.5">Preencha os dados do banner (entre 4001 e 4310) e avalie os critérios abaixo.</p>
         </div>
 
         <form id="form-evaluation" onsubmit="submitEvaluation(event)" class="space-y-6">
@@ -143,11 +143,11 @@
             </div>
             <div>
               <label for="evaluator-sigla" class="block text-xs font-bold text-gray-700 uppercase mb-1">Sigla do Avaliador *</label>
-              <input type="text" id="evaluator-sigla" required placeholder="Ex: ABC" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm uppercase outline-none">
+              <input type="text" id="evaluator-sigla" required placeholder="Ex: ABC" oninput="this.value = this.value.toUpperCase()" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm uppercase outline-none">
             </div>
             <div>
               <label for="banner-number" class="block text-xs font-bold text-gray-700 uppercase mb-1">Número do Banner *</label>
-              <input type="text" id="banner-number" required placeholder="Ex: 01" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm outline-none">
+              <input type="number" id="banner-number" required min="4001" max="4310" placeholder="4001 a 4310" oninput="if(this.value.length > 4) this.value = this.value.slice(0, 4);" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm outline-none">
             </div>
           </div>
 
@@ -180,9 +180,6 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-2 sm:gap-3">
-          <button onclick="renderAdminDashboard()" class="bg-fam-blue hover:bg-fam-navy text-white text-xs font-semibold px-3 py-2 rounded-xl shadow transition-all flex items-center gap-1.5">
-            <i class="fa-solid fa-rotate"></i> <span>Atualizar Dados</span>
-          </button>
           <div class="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 w-full sm:w-auto">
             <button onclick="exportToCSV()" class="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-2 rounded-xl shadow">Detalhado</button>
             <button onclick="exportSummaryCSV()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-2 rounded-xl shadow">Por Banner</button>
@@ -246,10 +243,9 @@
     <div class="max-w-7xl mx-auto px-4 text-center text-xs text-gray-500">&copy; 2026 FAM - Faculdade de Americana. Sistema Integrado.</div>
   </footer>
 
-  <!-- SCRIPT PRINCIPAL INTEGRADO AO GOOGLE SHEETS -->
+  <!-- SCRIPT PRINCIPAL -->
   <script>
-    // Cole aqui a URL gerada no Google Apps Script (Implantação da Web)
-    const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzPztrtAuWVbgGQic4FLTxqrV0AFgxqCc5UY01OWuHw95ZhH3lSBqmbEVjMP2hc_58Z5w/exec';
+    const GOOGLE_SCRIPT_URL = 'COLOQUE_AQUI_A_URL_DO_SEU_GOOGLE_SCRIPT';
 
     const PI_QUESTIONS = [
       { id: 'q1', title: '1. Contextualização e Problema', desc: 'Apresentação clara do tema, justificativa e formulação do problema.' },
@@ -347,7 +343,13 @@
       e.preventDefault();
       const dateVal = document.getElementById('event-date').value;
       const siglaVal = document.getElementById('evaluator-sigla').value.trim().toUpperCase();
-      const bannerVal = document.getElementById('banner-number').value.trim().toUpperCase();
+      const bannerVal = parseInt(document.getElementById('banner-number').value.trim(), 10);
+
+      // Validação estrita do número do banner (entre 4001 e 4310)
+      if (isNaN(bannerVal) || bannerVal < 4001 || bannerVal > 4310) {
+        showToast('O número do banner deve ser exatamente entre 4001 e 4310!', 'error');
+        return;
+      }
 
       if (PI_QUESTIONS.some(q => !currentRatings[q.id])) {
         showToast('Avalie TODAS as questões com estrelas!', 'error');
@@ -367,7 +369,7 @@
         id: Date.now().toString(),
         eventDate: dateVal,
         evaluatorSigla: siglaVal,
-        bannerNumber: bannerVal,
+        bannerNumber: bannerVal.toString(),
         answers: questionAnswers,
         totalScore: Math.round(totalPoints * 1000) / 1000,
         timestamp: new Date().toLocaleString('pt-BR')
@@ -403,16 +405,7 @@
     }
 
     async function renderAdminDashboard() {
-      showToast('Buscando dados da nuvem...', 'info');
-      try {
-        const response = await fetch(GOOGLE_SCRIPT_URL);
-        // Nota: Como o Apps Script via GET pode ter limitações de CORS dependendo do deploy, 
-        // caso prefira, podemos ler via JSONP ou carregar direto. 
-      } catch(e) {
-        // Se houver bloqueio CORS direto no GET do Google Apps Script, 
-        // podemos ajustar o script para retornar os dados formatados.
-      }
-      // Por enquanto, atualiza os contadores visuais
+      showToast('Painel atualizado com sucesso.', 'info');
     }
 
     function showToast(msg, type = 'success') {
