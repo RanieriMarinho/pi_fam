@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Avaliação - PI FAM</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts: Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            fam: {
+              navy: '#0A192F',
+              blue: '#004B87',
+              orange: '#F36F21',
+              lightBlue: '#00A3E0',
+              gold: '#FFB800',
+              goldHover: '#E0A100',
+              bg: '#F4F7FA',
+              card: '#FFFFFF'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    .star-btn {
+      transition: transform 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+    }
+    .star-btn:hover {
+      transform: scale(1.05);
+    }
+    .star-btn.selected {
+      background-color: #FEF3C7;
+      border-color: #F59E0B;
+      color: #D97706;
+    }
+  </style>
+
+  <!-- SCRIPT DE SEGURANÇA: BLOQUEIO DE BOTÃO DIREITO E ATALHOS -->
+  <script>
+    document.addEventListener('contextmenu', function(e) {
+      e.preventDefault();
+      return false;
+    });
+
+    document.addEventListener('keydown', function(e) {
+      if (
+        e.key === 'F12' || 
+        (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'C' || e.key === 'J' || e.key === 'K')) || 
+        (e.ctrlKey && (e.key === 'U' || e.key === 'u' || e.key === 'S' || e.key === 's'))
+      ) {
+        e.preventDefault();
+        return false;
+      }
+    });
+  </script>
+</head>
+<body class="bg-fam-bg text-gray-800 font-sans min-h-screen flex flex-col antialiased">
+
+  <!-- Header Global -->
+  <header class="bg-fam-navy text-white shadow-md sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="bg-white rounded-lg p-1.5 flex items-center justify-center shadow-sm">
+          <img src="fam.png" alt="Logo FAM" class="h-6 sm:h-7 w-auto object-contain">
+        </div>
+        <div>
+          <h1 class="font-bold text-sm sm:text-base md:text-lg leading-tight">Projeto Integrador</h1>
+          <p class="text-[10px] sm:text-xs text-blue-200">Sistema Oficial de Avaliação</p>
+        </div>
+      </div>
+
+      <!-- Session Info / Logout -->
+      <div id="user-session" class="hidden flex items-center space-x-3 sm:space-x-4">
+        <span id="user-badge" class="text-[11px] sm:text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-900/80 border border-blue-400 text-blue-100 flex items-center gap-1.5">
+          <i class="fa-solid fa-user text-fam-gold"></i>
+          <span id="user-role-text">Prof</span>
+        </span>
+        <button onclick="logout()" class="text-gray-300 hover:text-white text-xs sm:text-sm flex items-center gap-1 transition-colors">
+          <i class="fa-solid fa-right-from-bracket"></i>
+          <span class="hidden sm:inline">Sair</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Container Principal -->
+  <main class="flex-grow max-w-7xl w-full mx-auto p-3 sm:p-6 lg:p-8">
+
+    <!-- Toast Notification Message -->
+    <div id="toast" class="hidden fixed bottom-5 right-5 z-50 flex items-center p-4 mb-4 text-gray-800 bg-white rounded-xl shadow-2xl border-l-4 border-green-500 transition-all duration-300 max-w-md w-[90%] sm:w-auto" role="alert">
+      <div id="toast-icon" class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 text-green-500 bg-green-100 rounded-lg">
+        <i class="fa-solid fa-check"></i>
+      </div>
+      <div id="toast-msg" class="ml-3 text-xs sm:text-sm font-medium">Operação realizada com sucesso.</div>
+      <button type="button" onclick="hideToast()" class="ml-auto -mx-1.5 -my-1.5 bg-white text-gray-400 hover:text-gray-900 rounded-lg p-1.5 hover:bg-gray-100 inline-flex items-center justify-center h-8 w-8">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <!-- TELA 1: LOGIN -->
+    <section id="screen-login" class="flex items-center justify-center py-6 sm:py-12 px-2">
+      <div class="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
+        <div class="bg-fam-blue p-6 text-white text-center relative">
+          <div class="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-10 -mt-10 pointer-events-none"></div>
+          <i class="fa-solid fa-graduation-cap text-3xl sm:text-4xl mb-2 text-fam-gold"></i>
+          <h2 class="text-xl sm:text-2xl font-bold">Portal de Avaliação</h2>
+          <p class="text-xs text-blue-100 mt-1">Acesse com suas credenciais para prosseguir</p>
+        </div>
+
+        <form id="form-login" onsubmit="handleLogin(event)" class="p-5 sm:p-8 space-y-4 sm:space-y-5">
+          <div>
+            <label for="login-username" class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">Usuário</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+                <i class="fa-solid fa-user"></i>
+              </span>
+              <input type="text" id="login-username" required placeholder="Digite seu usuário" class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-300 text-gray-900 rounded-xl focus:ring-2 focus:ring-fam-blue focus:border-fam-blue transition-all outline-none text-sm">
+            </div>
+          </div>
+
+          <div>
+            <label for="login-password" class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">Senha</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+                <i class="fa-solid fa-lock"></i>
+              </span>
+              <input type="password" id="login-password" required placeholder="••••••••" class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-300 text-gray-900 rounded-xl focus:ring-2 focus:ring-fam-blue focus:border-fam-blue transition-all outline-none text-sm">
+            </div>
+          </div>
+
+          <div id="login-error" class="hidden p-3 bg-red-50 border-l-4 border-red-500 text-red-700 text-xs rounded">
+            Usuário ou senha incorretos!
+          </div>
+
+          <button type="submit" class="w-full bg-fam-blue hover:bg-fam-navy text-white font-semibold py-3 px-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2 text-sm sm:text-base">
+            <span>Entrar no Sistema</span>
+            <i class="fa-solid fa-arrow-right text-xs"></i>
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- TELA 2: FORMULÁRIO DO PROFESSOR -->
+    <section id="screen-professor" class="hidden max-w-3xl mx-auto space-y-6">
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-6">
+        <div class="border-b border-gray-100 pb-4 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h2 class="text-lg sm:text-xl font-bold text-fam-navy flex items-center gap-2">
+              <i class="fa-solid fa-clipboard-check text-fam-blue"></i>
+              Ficha de Avaliação do PI
+            </h2>
+            <p class="text-xs text-gray-500 mt-0.5">Preencha os dados do banner e avalie os critérios obrigatórios abaixo.</p>
+          </div>
+        </div>
+
+        <form id="form-evaluation" onsubmit="submitEvaluation(event)" class="space-y-6">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 p-3 sm:p-4 bg-gray-50 rounded-xl border border-gray-200/80">
+            <div>
+              <label for="event-date" class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Data do Evento *</label>
+              <input type="date" id="event-date" required class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 focus:ring-2 focus:ring-fam-blue focus:border-fam-blue outline-none">
+            </div>
+
+            <div>
+              <label for="evaluator-sigla" class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Sigla do Avaliador *</label>
+              <input type="text" id="evaluator-sigla" required placeholder="Ex: ABC" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 focus:ring-2 focus:ring-fam-blue focus:border-fam-blue outline-none uppercase">
+            </div>
+
+            <div>
+              <label for="banner-number" class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Número do Banner *</label>
+              <input type="text" id="banner-number" required placeholder="Ex: 01" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 focus:ring-2 focus:ring-fam-blue focus:border-fam-blue outline-none">
+            </div>
+          </div>
+
+          <div class="space-y-4">
+            <h3 class="text-xs sm:text-sm font-bold text-gray-800 uppercase tracking-wider border-b pb-2 flex items-center gap-2">
+              <i class="fa-solid fa-list-check text-fam-blue"></i>
+              Critérios de Avaliação (Obrigatórios)
+            </h3>
+
+            <div id="questions-container" class="space-y-3 sm:space-y-4">
+              <!-- Pergunta Dinâmica Gerada via JS -->
+            </div>
+          </div>
+
+          <div class="pt-4 border-t border-gray-100 flex flex-col-reverse sm:flex-row items-center justify-end gap-3">
+            <button type="button" onclick="resetEvalForm()" class="w-full sm:w-auto px-4 py-2.5 text-xs sm:text-sm text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors font-medium text-center">
+              Limpar Campos
+            </button>
+            <button type="submit" class="w-full sm:w-auto px-6 py-2.5 bg-fam-blue hover:bg-fam-navy text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 text-xs sm:text-sm">
+              <i class="fa-solid fa-paper-plane"></i>
+              <span>Enviar Avaliação</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- TELA 3: PAINEL ADMIN / DASHBOARD -->
+    <section id="screen-admin" class="hidden space-y-6">
+      
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div>
+          <h2 class="text-lg sm:text-xl font-bold text-fam-navy flex items-center gap-2">
+            <i class="fa-solid fa-chart-line text-fam-blue"></i>
+            Painel Geral do Administrador
+          </h2>
+          <p class="text-xs text-gray-500 mt-0.5">Visualize estatísticas e exporte relatórios consolidados.</p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+          <div class="flex items-center gap-2 bg-gray-50 p-1.5 rounded-xl border border-gray-200 w-full sm:w-auto">
+            <span class="text-xs font-semibold text-gray-600 pl-2 flex items-center gap-1">
+              <i class="fa-regular fa-calendar"></i> Data:
+            </span>
+            <select id="admin-date-filter" onchange="renderAdminDashboard()" class="bg-white text-xs font-semibold border border-gray-300 rounded-lg px-2.5 py-1.5 focus:ring-fam-blue focus:border-fam-blue outline-none flex-grow sm:flex-grow-0">
+              <option value="ALL">Todas as datas</option>
+            </select>
+          </div>
+
+          <!-- Botões de Ação Adaptáveis -->
+          <div class="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 w-full sm:w-auto">
+            <button onclick="exportToCSV()" class="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-2 rounded-xl shadow hover:shadow-md transition-all flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-file-csv"></i>
+              <span>Detalhado</span>
+            </button>
+
+            <button onclick="exportSummaryCSV()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-2 rounded-xl shadow hover:shadow-md transition-all flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-file-csv"></i>
+              <span>Por Banner</span>
+            </button>
+
+            <button onclick="exportEvaluatorSummaryCSV()" class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold px-3 py-2 rounded-xl shadow hover:shadow-md transition-all flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-file-csv"></i>
+              <span>Por Sigla</span>
+            </button>
+
+            <button onclick="confirmClearData()" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-semibold px-3 py-2 rounded-xl transition-all flex items-center justify-center gap-1">
+              <i class="fa-solid fa-trash-can"></i>
+              <span>Resetar</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI Summary Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 flex items-center gap-4">
+          <div class="p-3 bg-blue-50 text-fam-blue rounded-xl text-xl sm:text-2xl">
+            <i class="fa-solid fa-file-signature"></i>
+          </div>
+          <div>
+            <p class="text-[11px] sm:text-xs font-semibold text-gray-500 uppercase">Total de Avaliações</p>
+            <p id="kpi-total-evals" class="text-xl sm:text-2xl font-bold text-fam-navy">0</p>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 flex items-center gap-4">
+          <div class="p-3 bg-amber-50 text-fam-gold rounded-xl text-xl sm:text-2xl">
+            <i class="fa-solid fa-scroll"></i>
+          </div>
+          <div>
+            <p class="text-[11px] sm:text-xs font-semibold text-gray-500 uppercase">Banners Distintos</p>
+            <p id="kpi-total-banners" class="text-xl sm:text-2xl font-bold text-fam-navy">0</p>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 flex items-center gap-4">
+          <div class="p-3 bg-emerald-50 text-emerald-600 rounded-xl text-xl sm:text-2xl">
+            <i class="fa-solid fa-user-check"></i>
+          </div>
+          <div>
+            <p class="text-[11px] sm:text-xs font-semibold text-gray-500 uppercase">Avaliadores Ativos</p>
+            <p id="kpi-total-evaluators" class="text-xl sm:text-2xl font-bold text-fam-navy">0</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- DASHBOARDS / CHARTS SECTION -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        
+        <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-gray-200 space-y-3">
+          <div class="flex justify-between items-center border-b border-gray-100 pb-3">
+            <div>
+              <h3 class="font-bold text-gray-800 text-xs sm:text-sm flex items-center gap-2">
+                <i class="fa-solid fa-star text-fam-gold"></i>
+                Dashboard 1: Nota por Banner
+              </h3>
+              <p class="text-[11px] text-gray-500">Média acumulada calculada por banner</p>
+            </div>
+          </div>
+          <div class="relative h-60 sm:h-64 w-full">
+            <canvas id="chart-banner-scores"></canvas>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-gray-200 space-y-3">
+          <div class="flex justify-between items-center border-b border-gray-100 pb-3">
+            <div>
+              <h3 class="font-bold text-gray-800 text-xs sm:text-sm flex items-center gap-2">
+                <i class="fa-solid fa-users text-fam-blue"></i>
+                Dashboard 2: Avaliações por Sigla
+              </h3>
+              <p class="text-[11px] text-gray-500">Quantidade de banners avaliados por professor</p>
+            </div>
+          </div>
+          <div class="relative h-60 sm:h-64 w-full">
+            <canvas id="chart-evaluator-counts"></canvas>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Tabela Detalhada de Dados -->
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+        <div class="p-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gray-50/50">
+          <h3 class="font-bold text-gray-800 text-xs sm:text-sm flex items-center gap-2">
+            <i class="fa-solid fa-table text-fam-blue"></i>
+            Registros Detalhados
+          </h3>
+          <input type="text" id="admin-search" oninput="filterAdminTable()" placeholder="Buscar por Banner, Sigla..." class="px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs w-full sm:w-64 focus:ring-2 focus:ring-fam-blue outline-none">
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse min-w-[650px]">
+            <thead>
+              <tr class="bg-gray-100/70 border-b border-gray-200 text-[11px] font-bold text-gray-600 uppercase tracking-wider">
+                <th class="p-3">Data Evento</th>
+                <th class="p-3">Avaliador</th>
+                <th class="p-3">Banner</th>
+                <th class="p-3 text-center">Pontuação Total</th>
+                <th class="p-3">Média Critério</th>
+                <th class="p-3">Data/Hora Registro</th>
+                <th class="p-3 text-right">Ação</th>
+              </tr>
+            </thead>
+            <tbody id="admin-table-body" class="divide-y divide-gray-100 text-xs text-gray-700">
+              <!-- Renderizado via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-gray-200 py-4 mt-auto">
+    <div class="max-w-7xl mx-auto px-4 text-center text-xs text-gray-500">
+      &copy; 2026 FAM - Faculdade de Americana. Sistema Integrado de Avaliação Acadêmica.
+    </div>
+  </footer>
+
+  <!-- SCRIPT JS FUNCIONAL COM PROTEÇÃO DE NOME E LÓGICA -->
+  <script>
+    const PI_QUESTIONS = [
+      { id: 'q1', title: '1. Contextualização e Problema', desc: 'Apresentação clara do tema, justificativa e formulação do problema.' },
+      { id: 'q2', title: '2. Fundamentação Teórica', desc: 'Embasamento conceitual adequado e fundamentado nos conteúdos do curso.' },
+      { id: 'q3', title: '3. Metodologia e Solução Proposta', desc: 'Coerência nos procedimentos metodológicos e viabilidade da solução.' },
+      { id: 'q4', title: '4. Apresentação e Domínio do Tema', desc: 'Clareza, postura, articulação e segurança do grupo durante a defesa.' },
+      { id: 'q5', title: '5. Qualidade do Banner e Estética', desc: 'Organização visual, legibilidade, acabamento e síntese das informações.' }
+    ];
+
+    const STAR_WEIGHTS = { 1: 0.02, 2: 0.11, 3: 0.20 };
+
+    let currentUser = null;
+    let evaluationsData = [];
+    let currentRatings = {};
+    let chartBannerScoresInstance = null;
+    let chartEvaluatorCountsInstance = null;
+
+    window.onload = function() {
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('event-date').value = today;
+      loadStoredEvaluations();
+      buildQuestionsForm();
+      const savedUser = sessionStorage.getItem('fam_pi_user');
+      if (savedUser) { setSessionUser(savedUser); } else { showScreen('screen-login'); }
+    };
+
+    function loadStoredEvaluations() {
+      const stored = localStorage.getItem('fam_pi_evaluations');
+      try { evaluationsData = stored ? JSON.parse(stored) : []; } catch(e) { evaluationsData = []; }
+    }
+
+    function saveEvaluations() {
+      localStorage.setItem('fam_pi_evaluations', JSON.stringify(evaluationsData));
+    }
+
+    function buildQuestionsForm() {
+      const container = document.getElementById('questions-container');
+      container.innerHTML = '';
+      PI_QUESTIONS.forEach((q) => {
+        const qCard = document.createElement('div');
+        qCard.className = 'p-3 sm:p-4 bg-white rounded-xl border border-gray-200 hover:border-gray-300 transition-all space-y-2';
+        qCard.innerHTML = `
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div>
+              <h4 class="font-bold text-gray-800 text-xs sm:text-sm">${q.title} <span class="text-red-500">*</span></h4>
+              <p class="text-[11px] sm:text-xs text-gray-500">${q.desc}</p>
+            </div>
+            <div class="flex items-center gap-1.5 self-start md:self-auto bg-gray-50 p-1 rounded-lg border border-gray-200 w-full md:w-auto justify-between md:justify-start" id="star-group-${q.id}">
+              <button type="button" onclick="selectStar('${q.id}', 1)" id="btn-${q.id}-1" class="star-btn flex-1 md:flex-initial px-3 py-1.5 text-xs font-semibold rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-amber-50 hover:text-amber-600 flex items-center justify-center gap-1"><span>1</span> <i class="fa-solid fa-star text-amber-400"></i></button>
+              <button type="button" onclick="selectStar('${q.id}', 2)" id="btn-${q.id}-2" class="star-btn flex-1 md:flex-initial px-3 py-1.5 text-xs font-semibold rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-amber-50 hover:text-amber-600 flex items-center justify-center gap-1"><span>2</span> <i class="fa-solid fa-star text-amber-400"></i></button>
+              <button type="button" onclick="selectStar('${q.id}', 3)" id="btn-${q.id}-3" class="star-btn flex-1 md:flex-initial px-3 py-1.5 text-xs font-semibold rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-amber-50 hover:text-amber-600 flex items-center justify-center gap-1"><span>3</span> <i class="fa-solid fa-star text-amber-400"></i></button>
+            </div>
+          </div>`;
+        container.appendChild(qCard);
+      });
+    }
+
+    function selectStar(questionId, value) {
+      currentRatings[questionId] = value;
+      [1, 2, 3].forEach(val => {
+        const btn = document.getElementById(`btn-${questionId}-${val}`);
+        if (btn) {
+          if (val === value) { btn.classList.add('selected'); btn.classList.remove('bg-white', 'text-gray-700'); }
+          else { btn.classList.remove('selected'); btn.classList.add('bg-white', 'text-gray-700'); }
+        }
+      });
+    }
+
+    function handleLogin(e) {
+      e.preventDefault();
+      const u = document.getElementById('login-username').value.trim();
+      const p = document.getElementById('login-password').value.trim();
+      const err = document.getElementById('login-error');
+      err.classList.add('hidden');
+
+      if (u === 'professor' && p === 'pi2026') {
+        setSessionUser('professor');
+        showToast('Login efetuado com sucesso como Avaliador!');
+      } else if (u === 'admin' && p === 'fam@2026') {
+        setSessionUser('admin');
+        showToast('Login efetuado com sucesso como Administrador!');
+      } else {
+        err.classList.remove('hidden');
+      }
+    }
+
+    function setSessionUser(role) {
+      currentUser = role;
+      sessionStorage.setItem('fam_pi_user', role);
+      document.getElementById('user-session').classList.remove('hidden');
+      document.getElementById('user-role-text').innerText = role === 'admin' ? 'Administrador' : 'Professor';
+      if (role === 'admin') { showScreen('screen-admin'); renderAdminDashboard(); }
+      else { showScreen('screen-professor'); }
+    }
+
+    function logout() {
+      currentUser = null;
+      sessionStorage.removeItem('fam_pi_user');
+      document.getElementById('user-session').classList.add('hidden');
+      document.getElementById('login-username').value = '';
+      document.getElementById('login-password').value = '';
+      showScreen('screen-login');
+      showToast('Sessão encerrada com sucesso.', 'info');
+    }
+
+    function showScreen(sId) {
+      ['screen-login', 'screen-professor', 'screen-admin'].forEach(id => document.getElementById(id).classList.add('hidden'));
+      document.getElementById(sId).classList.remove('hidden');
+    }
+
+    function submitEvaluation(e) {
+      e.preventDefault();
+      const dateVal = document.getElementById('event-date').value;
+      const siglaVal = document.getElementById('evaluator-sigla').value.trim().toUpperCase();
+      const bannerVal = document.getElementById('banner-number').value.trim().toUpperCase();
+
+      if (PI_QUESTIONS.some(q => !currentRatings[q.id])) {
+        showToast('Por favor, avalie TODAS as questões com 1, 2 ou 3 estrelas!', 'error');
+        return;
+      }
+
+      let totalPoints = 0;
+      const questionAnswers = {};
+      PI_QUESTIONS.forEach(q => {
+        const stars = currentRatings[q.id];
+        const pts = STAR_WEIGHTS[stars] || 0;
+        totalPoints += pts;
+        questionAnswers[q.id] = { stars: stars, points: pts };
+      });
+      totalPoints = Math.round(totalPoints * 1000) / 1000;
+
+      evaluationsData.push({
+        id: Date.now().toString(),
+        eventDate: dateVal,
+        evaluatorSigla: siglaVal,
+        bannerNumber: bannerVal,
+        answers: questionAnswers,
+        totalScore: totalPoints,
+        timestamp: new Date().toLocaleString('pt-BR')
+      });
+      saveEvaluations();
+      showToast(`Avaliação do ${bannerVal} enviada com sucesso!`);
+      resetEvalForm();
+    }
+
+    function resetEvalForm() {
+      document.getElementById('banner-number').value = '';
+      document.getElementById('evaluator-sigla').value = '';
+      currentRatings = {};
+      buildQuestionsForm();
+    }
+
+    function renderAdminDashboard() {
+      loadStoredEvaluations();
+      populateDateFilter();
+      const selectedDate = document.getElementById('admin-date-filter').value;
+      const filteredData = selectedDate === 'ALL' ? evaluationsData : evaluationsData.filter(d => d.eventDate === selectedDate);
+
+      document.getElementById('kpi-total-evals').innerText = filteredData.length;
+      document.getElementById('kpi-total-banners').innerText = new Set(filteredData.map(d => d.bannerNumber)).size;
+      document.getElementById('kpi-total-evaluators').innerText = new Set(filteredData.map(d => d.evaluatorSigla)).size;
+
+      renderChart1BannerScores(filteredData);
+      renderChart2EvaluatorCounts(filteredData);
+      renderAdminTable(filteredData);
+    }
+
+    function populateDateFilter() {
+      const select = document.getElementById('admin-date-filter');
+      const cur = select.value;
+      const dates = [...new Set(evaluationsData.map(d => d.eventDate))].sort().reverse();
+      select.innerHTML = '<option value="ALL">Todas as datas</option>';
+      dates.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d;
+        const [y, m, day] = d.split('-');
+        opt.innerText = `${day}/${m}/${y}`;
+        select.appendChild(opt);
+      });
+      if (dates.includes(cur)) select.value = cur;
+    }
+
+    function renderChart1BannerScores(data) {
+      const ctx = document.getElementById('chart-banner-scores').getContext('2d');
+      const scores = {}, counts = {};
+      data.forEach(item => {
+        scores[item.bannerNumber] = (scores[item.bannerNumber] || 0) + item.totalScore;
+        counts[item.bannerNumber] = (counts[item.bannerNumber] || 0) + 1;
+      });
+      const labels = Object.keys(scores).sort();
+      const averages = labels.map(b => (scores[b] / counts[b]).toFixed(2));
+
+      if (chartBannerScoresInstance) chartBannerScoresInstance.destroy();
+      chartBannerScoresInstance = new Chart(ctx, {
+        type: 'bar',
+        data: { labels: labels, datasets: [{ label: 'Nota Média Acumulada', data: averages, backgroundColor: '#004B87', borderRadius: 6 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 1.0 } } }
+      });
+    }
+
+    function renderChart2EvaluatorCounts(data) {
+      const ctx = document.getElementById('chart-evaluator-counts').getContext('2d');
+      const evals = {};
+      data.forEach(item => { evals[item.evaluatorSigla] = (evals[item.evaluatorSigla] || 0) + 1; });
+      const labels = Object.keys(evals).sort();
+      const counts = labels.map(s => evals[s]);
+
+      if (chartEvaluatorCountsInstance) chartEvaluatorCountsInstance.destroy();
+      chartEvaluatorCountsInstance = new Chart(ctx, {
+        type: 'bar',
+        data: { labels: labels, datasets: [{ label: 'Banners Avaliados', data: counts, backgroundColor: '#F36F21', borderRadius: 6 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+      });
+    }
+
+    function renderAdminTable(data) {
+      const tbody = document.getElementById('admin-table-body');
+      tbody.innerHTML = '';
+      if (data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-gray-400">Nenhuma avaliação encontrada.</td></tr>`;
+        return;
+      }
+      data.slice().reverse().forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-gray-50/80 transition-colors';
+        const [y, m, d] = item.eventDate.split('-');
+        const avgStars = (Object.values(item.answers).reduce((acc, curr) => acc + curr.stars, 0) / PI_QUESTIONS.length).toFixed(1);
+        tr.innerHTML = `
+          <td class="p-3 font-medium text-gray-900">${d}/${m}/${y}</td>
+          <td class="p-3 font-semibold text-fam-blue">${item.evaluatorSigla}</td>
+          <td class="p-3"><span class="bg-gray-100 text-gray-800 font-bold px-2 py-0.5 rounded">${item.bannerNumber}</span></td>
+          <td class="p-3 text-center font-bold text-emerald-600">${item.totalScore.toFixed(2)} pts</td>
+          <td class="p-3"><span class="text-amber-500 font-semibold"><i class="fa-solid fa-star text-xs"></i> ${avgStars}★</span></td>
+          <td class="p-3 text-gray-500 text-[11px]">${item.timestamp}</td>
+          <td class="p-3 text-right"><button onclick="deleteRecord('${item.id}')" class="text-gray-400 hover:text-red-600"><i class="fa-solid fa-trash-can"></i></button></td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function filterAdminTable() {
+      const query = document.getElementById('admin-search').value.toLowerCase();
+      const selectedDate = document.getElementById('admin-date-filter').value;
+      let filtered = selectedDate === 'ALL' ? evaluationsData : evaluationsData.filter(d => d.eventDate === selectedDate);
+      if (query) {
+        filtered = filtered.filter(item => item.bannerNumber.toLowerCase().includes(query) || item.evaluatorSigla.toLowerCase().includes(query));
+      }
+      renderAdminTable(filtered);
+    }
+
+    function deleteRecord(id) {
+      if (confirm('Deseja remover este registro?')) {
+        evaluationsData = evaluationsData.filter(item => item.id !== id);
+        saveEvaluations();
+        renderAdminDashboard();
+        showToast('Registro excluído.');
+      }
+    }
+
+    function confirmClearData() {
+      if (confirm('ATENÇÃO: Deseja apagar TODAS as avaliações?')) {
+        evaluationsData = [];
+        saveEvaluations();
+        renderAdminDashboard();
+        showToast('Dados resetados.');
+      }
+    }
+
+    function exportToCSV() {
+      if (evaluationsData.length === 0) { showToast('Sem dados.', 'error'); return; }
+      let csv = "Data_Evento;Sigla_Avaliador;Numero_Banner;Pontuacao_Total;DataHora_Envio\n";
+      evaluationsData.forEach(i => { csv += `"${i.eventDate}";"${i.evaluatorSigla}";"${i.bannerNumber}";"${i.totalScore}";"${i.timestamp}"\n`; });
+      downloadCSV(csv, 'detalhado.csv');
+    }
+
+    function exportSummaryCSV() {
+      if (evaluationsData.length === 0) { showToast('Sem dados.', 'error'); return; }
+      let csv = "Numero_Banner;Total_Avaliacoes;Media_Pontuacao\n";
+      const summary = {};
+      evaluationsData.forEach(i => {
+        if (!summary[i.bannerNumber]) summary[i.bannerNumber] = { sum: 0, count: 0 };
+        summary[i.bannerNumber].sum += i.totalScore;
+        summary[i.bannerNumber].count += 1;
+      });
+      Object.keys(summary).forEach(b => {
+        csv += `"${b}";"${summary[b].count}";"${(summary[b].sum / summary[b].count).toFixed(2)}"\n`;
+      });
+      downloadCSV(csv, 'por_banner.csv');
+    }
+
+    function exportEvaluatorSummaryCSV() {
+      if (evaluationsData.length === 0) { showToast('Sem dados.', 'error'); return; }
+      let csv = "Sigla_Avaliador;Qtde_Avaliacoes\n";
+      const evals = {};
+      evaluationsData.forEach(i => { evals[i.evaluatorSigla] = (evals[i.evaluatorSigla] || 0) + 1; });
+      Object.keys(evals).forEach(s => { csv += `"${s}";"${evals[s]}"\n`; });
+      downloadCSV(csv, 'por_sigla.csv');
+    }
+
+    function downloadCSV(content, filename) {
+      const blob = new Blob(["\ufeff" + content], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      showToast('Relatório exportado com sucesso!');
+    }
+
+    function showToast(msg, type = 'success') {
+      const toast = document.getElementById('toast');
+      document.getElementById('toast-msg').innerText = msg;
+      const icon = document.getElementById('toast-icon');
+      icon.className = type === 'error' ? 'w-8 h-8 text-red-500 bg-red-100 rounded-lg flex items-center justify-center' : 'w-8 h-8 text-green-500 bg-green-100 rounded-lg flex items-center justify-center';
+      icon.innerHTML = type === 'error' ? '<i class="fa-solid fa-triangle-exclamation"></i>' : '<i class="fa-solid fa-check"></i>';
+      toast.classList.remove('hidden');
+      setTimeout(hideToast, 4000);
+    }
+
+    function hideToast() { document.getElementById('toast').classList.add('hidden'); }
+  </script>
+</body>
+</html>
