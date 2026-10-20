@@ -139,7 +139,6 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 p-3 sm:p-4 bg-gray-50 rounded-xl border border-gray-200/80">
             <div>
               <label for="evaluator-sigla" class="block text-xs font-bold text-gray-700 uppercase mb-1">Sigla do Avaliador (Apenas 2 Letras) *</label>
-              <!-- maxlength="2" restringe no teclado e onblur valida assim que clica fora -->
               <input type="text" id="evaluator-sigla" required maxlength="2" placeholder="Ex: AB" oninput="this.value = this.value.toUpperCase().replace(/[^A-Z]/g, '')" onblur="validateSigla()" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm uppercase outline-none">
             </div>
             <div>
@@ -177,6 +176,9 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+          <button onclick="renderAdminDashboard()" class="bg-fam-blue hover:bg-fam-navy text-white text-xs font-semibold px-3 py-2 rounded-xl shadow transition-all flex items-center gap-1.5">
+            <i class="fa-solid fa-rotate"></i> <span>Atualizar Dados</span>
+          </button>
           <div class="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 w-full sm:w-auto">
             <button onclick="exportToCSV()" class="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-2 rounded-xl shadow">Detalhado</button>
             <button onclick="exportSummaryCSV()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-2 rounded-xl shadow">Por Banner</button>
@@ -204,7 +206,7 @@
       <!-- Charts -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 space-y-3">
-          <h3 class="font-bold text-gray-800 text-xs sm:text-sm"><i class="fa-solid fa-star text-fam-gold"></i> Nota por Banner</h3>
+          <h3 class="font-bold text-gray-800 text-xs sm:text-sm"><i class="fa-solid fa-star text-fam-gold"></i> Nota Média por Banner</h3>
           <div class="relative h-60 w-full"><canvas id="chart-banner-scores"></canvas></div>
         </div>
         <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 space-y-3">
@@ -297,7 +299,6 @@
       });
     }
 
-    // Validação automática ao clicar fora do campo da sigla (evento blur)
     function validateSigla() {
       const input = document.getElementById('evaluator-sigla');
       const val = input.value.trim();
@@ -321,7 +322,6 @@
         setSessionUser('admin');
         showToast('Login efetuado como Administrador!');
       } else {
-        err.classList.add('hidden'); // Corrigido para exibir erro
         err.classList.remove('hidden');
       }
     }
@@ -353,14 +353,12 @@
       const siglaVal = document.getElementById('evaluator-sigla').value.trim().toUpperCase();
       const bannerVal = parseInt(document.getElementById('banner-number').value.trim(), 10);
 
-      // Validação estrita da sigla (exatamente 2 letras alfabéticas)
       if (siglaVal.length !== 2 || !/^[A-Z]{2}$/.test(siglaVal)) {
         showToast('A sigla do avaliador deve conter exatamente 2 letras!', 'error');
         document.getElementById('evaluator-sigla').focus();
         return;
       }
 
-      // Validação restrita do número do banner (entre 4001 e 4310)
       if (isNaN(bannerVal) || bannerVal < 4001 || bannerVal > 4310) {
         showToast('O número do banner deve ser exatamente entre 4001 e 4310!', 'error');
         document.getElementById('banner-number').focus();
@@ -420,8 +418,149 @@
       buildQuestionsForm();
     }
 
-    async function renderAdminDashboard() {
-      showToast('Painel atualizado com sucesso.', 'info');
+    // BUSCA OS DADOS DA PLANILHA VIA JSONP (EVITA BLOQUEIO DE CORS)
+    function renderAdminDashboard() {
+      showToast('Carregando dados da nuvem...', 'info');
+      
+      const callbackName = 'famDataCallback_' + Math.round(Math.random() * 100000);
+      
+      window[callbackName] = function(data) {
+        evaluationsData = data || [];
+        updateAdminKPIs();
+        populateAdminTable();
+        renderAdminCharts();
+        showToast('Painel atualizado com sucesso!');
+        delete window[callbackName];
+        document.getElementById('jsonp-script').remove();
+      };
+
+      const script = document.createElement('script');
+      script.id = 'jsonp-script';
+      script.src = `${GOOGLE_SCRIPT_URL}?callback=${callbackName}`;
+      script.onerror = function() {
+        showToast('Erro ao carregar dados do painel.', 'error');
+        delete window[callbackName];
+      };
+      document.body.appendChild(script);
+    }
+
+    function updateAdminKPIs() {
+      document.getElementById('kpi-total-evals').innerText = evaluationsData.length;
+      const uniqueBanners = [...new Set(evaluationsData.map(item => item.bannerNumber))];
+      document.getElementById('kpi-total-banners').innerText = uniqueBanners.length;
+      const uniqueEvaluators = [...new Set(evaluationsData.map(item => item.evaluatorSigla))];
+      document.getElementById('kpi-total-evaluators').innerText = uniqueEvaluators.length;
+    }
+
+    function populateAdminTable() {
+      const tbody = document.getElementById('admin-table-body');
+      tbody.innerHTML = '';
+      if (evaluationsData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-400">Nenhuma avaliação registrada ainda.</td></tr>`;
+        return;
+      }
+      [...evaluationsData].reverse().forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-gray-50/80 transition-colors';
+        tr.innerHTML = `
+          <td class="p-3 font-medium">${item.eventDate}</td>
+          <td class="p-3"><span class="px-2 py-0.5 bg-blue-50 text-fam-blue rounded font-semibold text-[11px]">${item.evaluatorSigla}</span></td>
+          <td class="p-3 font-bold text-gray-800">Banner ${item.bannerNumber}</td>
+          <td class="p-3 text-center font-bold text-emerald-600">${item.totalScore}</td>
+          <td class="p-3 text-gray-500 text-[11px]">${item.timestamp}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderAdminCharts() {
+      const bannerScores = {};
+      const evaluatorCounts = {};
+
+      evaluationsData.forEach(item => {
+        if (!bannerScores[item.bannerNumber]) bannerScores[item.bannerNumber] = { sum: 0, count: 0 };
+        bannerScores[item.bannerNumber].sum += parseFloat(item.totalScore);
+        bannerScores[item.bannerNumber].count += 1;
+
+        if (!evaluatorCounts[item.evaluatorSigla]) evaluatorCounts[item.evaluatorSigla] = 0;
+        evaluatorCounts[item.evaluatorSigla] += 1;
+      });
+
+      const banners = Object.keys(bannerScores).sort();
+      const avgScores = banners.map(b => (bannerScores[b].sum / bannerScores[b].count).toFixed(2));
+
+      const evaluators = Object.keys(evaluatorCounts);
+      const counts = evaluators.map(e => evaluatorCounts[e]);
+
+      const ctxBanner = document.getElementById('chart-banner-scores').getContext('2d');
+      if (chartBannerScoresInstance) chartBannerScoresInstance.destroy();
+      chartBannerScoresInstance = new Chart(ctxBanner, {
+        type: 'bar',
+        data: {
+          labels: banners.length ? banners.map(b => `Banner ${b}`) : ['Nenhum'],
+          datasets: [{ label: 'Média de Pontuação', data: banners.length ? avgScores : [0], backgroundColor: '#004B87', borderRadius: 6 }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 1.0 } } }
+      });
+
+      const ctxEval = document.getElementById('chart-evaluator-counts').getContext('2d');
+      if (chartEvaluatorCountsInstance) chartEvaluatorCountsInstance.destroy();
+      chartEvaluatorCountsInstance = new Chart(ctxEval, {
+        type: 'doughnut',
+        data: {
+          labels: evaluators.length ? evaluators : ['Nenhum'],
+          datasets: [{ data: evaluators.length ? counts : [1], backgroundColor: ['#004B87', '#F36F21', '#FFB800', '#00A3E0', '#10B981'] }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+    }
+
+    function exportToCSV() {
+      if (evaluationsData.length === 0) { showToast('Não há dados para exportar.', 'error'); return; }
+      let csv = 'ID,Data Evento,Sigla Avaliador,Numero Banner,Pontuacao Total,Data/Hora Registro\n';
+      evaluationsData.forEach(i => { csv += `"${i.id}","${i.eventDate}","${i.evaluatorSigla}","${i.bannerNumber}","${i.totalScore}","${i.timestamp}"\n`; });
+      downloadCSV(csv, 'detalhado_avaliacoes.csv');
+    }
+
+    function exportSummaryCSV() {
+      if (evaluationsData.length === 0) { showToast('Não há dados para exportar.', 'error'); return; }
+      let csv = 'Numero Banner,Media Pontuacao,Total Avaliacoes\n';
+      const summary = {};
+      evaluationsData.forEach(i => {
+        if(!summary[i.bannerNumber]) summary[i.bannerNumber] = { sum: 0, count: 0 };
+        summary[i.bannerNumber].sum += parseFloat(i.totalScore);
+        summary[i.bannerNumber].count += 1;
+      });
+      for(let b in summary) {
+        let avg = (summary[b].sum / summary[b].count).toFixed(3);
+        csv += `"Banner ${b}","${avg}","${summary[b].count}"\n`;
+      }
+      downloadCSV(csv, 'resumo_por_banner.csv');
+    }
+
+    function exportEvaluatorSummaryCSV() {
+      if (evaluationsData.length === 0) { showToast('Não há dados para exportar.', 'error'); return; }
+      let csv = 'Sigla do Avaliador,Total de Avaliacoes Realizadas\n';
+      const summary = {};
+      evaluationsData.forEach(i => {
+        if(!summary[i.evaluatorSigla]) summary[i.evaluatorSigla] = 0;
+        summary[i.evaluatorSigla] += 1;
+      });
+      for(let e in summary) {
+        csv += `"${e}","${summary[e]}"\n`;
+      }
+      downloadCSV(csv, 'resumo_por_avaliador.csv');
+    }
+
+    function downloadCSV(csvContent, fileName) {
+      const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.setAttribute('href', url);
+      a.setAttribute('download', fileName);
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
     }
 
     function showToast(msg, type = 'success') {
