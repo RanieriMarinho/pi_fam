@@ -77,7 +77,7 @@
   <!-- Container Principal -->
   <main class="flex-grow max-w-7xl w-full mx-auto p-3 sm:p-6 lg:p-8">
 
-    <!-- Toast Notification Message -->
+    <!-- Toast Notification Message (Cantos inferior direito - sutil) -->
     <div id="toast" class="hidden fixed bottom-5 right-5 z-50 flex items-center p-4 mb-4 text-gray-800 bg-white rounded-xl shadow-2xl border-l-4 border-green-500 transition-all duration-300 max-w-md w-[90%] sm:w-auto" role="alert">
       <div id="toast-icon" class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 text-green-500 bg-green-100 rounded-lg">
         <i class="fa-solid fa-check"></i>
@@ -86,6 +86,22 @@
       <button type="button" onclick="hideToast()" class="ml-auto -mx-1.5 -my-1.5 bg-white text-gray-400 hover:text-gray-900 rounded-lg p-1.5 hover:bg-gray-100 inline-flex items-center justify-center h-8 w-8">
         <i class="fa-solid fa-xmark"></i>
       </button>
+    </div>
+
+    <!-- MODAL DE ALERTA CENTRALIZADO (DESTAQUE EM VERMELHO E NEGRITO) -->
+    <div id="center-modal-alert" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div class="bg-white rounded-2xl shadow-2xl border-4 border-red-500 max-w-lg w-full p-6 text-center space-y-4 animate-bounce-short">
+        <div class="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto text-3xl">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <h3 class="text-xl font-bold text-gray-900 uppercase tracking-wide">Atenção! Erro de Validação</h3>
+        <p id="center-modal-msg" class="text-base font-bold text-red-600 leading-relaxed"></p>
+        <div class="pt-2">
+          <button type="button" onclick="closeCenterModal()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all text-base uppercase tracking-wider">
+            Entendido, Refazer / Corrigir
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- TELA 1: LOGIN -->
@@ -290,11 +306,9 @@
       } else { 
         showScreen('screen-login'); 
       }
-      // Carrega os dados em segundo plano para validar duplicidade mesmo antes de entrar no admin
       preloadEvaluations();
     };
 
-    // Busca os dados da planilha para verificar duplicidade antecipadamente
     async function preloadEvaluations() {
       try {
         const response = await fetch(GOOGLE_SCRIPT_URL);
@@ -342,7 +356,7 @@
       const val = input.value.trim().toUpperCase();
       if (val.length > 0) {
         if (val.length < 2 || !ALLOWED_SIGLAS.includes(val)) {
-          showToast('Sigla inválida ou não autorizada!', 'error');
+          showCenterAlert('SIGLA INVÁLIDA OU NÃO AUTORIZADA!');
           input.value = '';
           input.focus();
         }
@@ -395,39 +409,37 @@
       const bannerVal = document.getElementById('banner-number').value.trim();
 
       if (!ALLOWED_SIGLAS.includes(siglaVal)) {
-        showToast('Sigla do avaliador não consta na lista autorizada!', 'error');
+        showCenterAlert('SIGLA DO AVALIADOR NÃO CONSTA NA LISTA AUTORIZADA!');
         document.getElementById('evaluator-sigla').focus();
         return;
       }
 
       const bannerNum = parseInt(bannerVal, 10);
       if (isNaN(bannerNum) || bannerNum < 4001 || bannerNum > 4310) {
-        showToast('O número do banner deve ser exatamente entre 4001 e 4310!', 'error');
+        showCenterAlert('O NÚMERO DO BANNER DEVE SER EXATAMENTE ENTRE 4001 E 4310!');
         document.getElementById('banner-number').focus();
         return;
       }
 
-      // ATUALIZA OS DADOS DA NUVEM ANTES DE VALIDAR A DUPLICIDADE
+      // Atualiza os dados da nuvem para garantir verificação de duplicidade precisa
       try {
         const response = await fetch(GOOGLE_SCRIPT_URL);
         evaluationsData = await response.json();
-      } catch (err) {
-        // Se falhar ao buscar, usa os dados locais em cache
-      }
+      } catch (err) {}
 
-      // TRAVA ANTI-DUPLICIDADE: Verifica se esta sigla já avaliou este banner
+      // TRAVA ANTI-DUPLICIDADE COM MODAL CENTRALIZADO
       const alreadyEvaluated = evaluationsData.some(item => 
         item.evaluatorSigla === siglaVal && String(item.bannerNumber) === String(bannerVal)
       );
 
       if (alreadyEvaluated) {
-        showToast(`Atenção: A sigla [${siglaVal}] já avaliou o Banner ${bannerVal} anteriormente!`, 'error');
+        showCenterAlert(`A SIGLA [${siglaVal}] JÁ AVALIOU O BANNER ${bannerVal} ANTERIORMENTE! POR FAVOR, REFAÇA COM OUTRO BANNER.`);
         document.getElementById('banner-number').focus();
         return;
       }
 
       if (PI_QUESTIONS.some(q => !currentRatings[q.id])) {
-        showToast('Avalie TODAS as questões com estrelas!', 'error');
+        showCenterAlert('VOCÊ PRECISA AVALIAR TODAS AS QUESTÕES COM ESTRELAS!');
         return;
       }
 
@@ -464,7 +476,7 @@
 
         showToast(`Avaliação do Banner ${bannerVal} enviada com sucesso!`);
         resetEvalForm();
-        preloadEvaluations(); // Atualiza os dados locais após enviar
+        preloadEvaluations();
       } catch (err) {
         showToast('Erro ao enviar. Verifique sua conexão.', 'error');
       } finally {
@@ -478,6 +490,16 @@
       document.getElementById('evaluator-sigla').value = '';
       currentRatings = {};
       buildQuestionsForm();
+    }
+
+    // FUNÇÕES PARA EXIBIR O ALERTA CENTRALIZADO EM DESTAQUE
+    function showCenterAlert(message) {
+      document.getElementById('center-modal-msg').innerText = message;
+      document.getElementById('center-modal-alert').classList.remove('hidden');
+    }
+
+    function closeCenterModal() {
+      document.getElementById('center-modal-alert').classList.add('hidden');
     }
 
     async function renderAdminDashboard() {
