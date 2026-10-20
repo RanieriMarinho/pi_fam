@@ -172,7 +172,7 @@
           <h2 class="text-lg sm:text-xl font-bold text-fam-navy flex items-center gap-2">
             <i class="fa-solid fa-chart-line text-fam-blue"></i> Painel Geral do Administrador
           </h2>
-          <p class="text-xs text-gray-500 mt-0.5">Sincronizado com a planilha do Google Sheets.</p>
+          <p class="text-xs text-gray-500 mt-0.5">Sincronizado em tempo real com a planilha em nuvem.</p>
         </div>
 
         <div class="flex flex-wrap items-center gap-2 sm:gap-3">
@@ -244,11 +244,7 @@
 
   <!-- SCRIPT PRINCIPAL -->
   <script>
-    const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzPztrtAuWVbgGQic4FLTxqrV0AFgxqCc5UY01OWuHw95ZhH3lSBqmbEVjMP2hc_58Z5w/exec';
-    
-    // ATENÇÃO: Cole abaixo o ID da sua planilha do Google (o trecho que fica entre /d/ e /edit na URL da sua planilha)
-    // Exemplo: se sua URL for https://docs.google.com/spreadsheets/d/1ABC123xyz/edit, o ID é "1ABC123xyz"
-    const SPREADSHEET_ID = '1gIrTJdNgwb8Z7Gr7woZcnDuiG8nLtanCvMqqL3jjSCI';
+    const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwv81MJVyJDlPqSlEDebGcx_QIto-PE9Fp-NwFe26jbz92ajtAeHfp_pd9jEG96IeyUKg/exec';
 
     const PI_QUESTIONS = [
       { id: 'q1', title: '1. Contextualização e Problema', desc: 'Apresentação clara do tema, justificativa e formulação do problema.' },
@@ -422,50 +418,19 @@
       buildQuestionsForm();
     }
 
-    // BUSCA OS DADOS DIRETAMENTE DA PLANILHA CSV PÚBLICA DO GOOGLE
     async function renderAdminDashboard() {
-      if (!SPREADSHEET_ID || SPREADSHEET_ID === 'COLOQUE_O_ID_DA_SUA_PLANILHA_AQUI') {
-        showToast('Configure o SPREADSHEET_ID no código!', 'error');
-        return;
-      }
-
       showToast('Carregando dados da nuvem...', 'info');
       try {
-        const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv`;
-        const response = await fetch(url);
-        const csvText = await response.text();
+        const response = await fetch(GOOGLE_SCRIPT_URL);
+        evaluationsData = await response.json();
         
-        evaluationsData = parseCSV(csvText);
         updateAdminKPIs();
         populateAdminTable();
         renderAdminCharts();
         showToast('Painel atualizado com sucesso!');
       } catch (err) {
-        showToast('Erro ao carregar dados da planilha.', 'error');
+        showToast('Erro ao carregar dados do painel.', 'error');
       }
-    }
-
-    // Parser simples para converter o CSV da planilha em objetos JavaScript
-    function parseCSV(text) {
-      const lines = text.split('\n');
-      const result = [];
-      // Começa do 1 para pular o cabeçalho
-      for (let i = 1; i < lines.length; i++) {
-        if (!lines[i].trim()) continue;
-        const row = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(item => item.replace(/^"\vert{}"$/g, '').replace(/""/g, '"'));
-        if (row.length >= 6 && row[0]) {
-          result.push({
-            id: row[0],
-            eventDate: row[1],
-            evaluatorSigla: row[2],
-            bannerNumber: row[3],
-            totalScore: parseFloat(row[4]) || 0,
-            timestamp: row[5],
-            answers: row[6] ? JSON.parse(row[6]) : {}
-          });
-        }
-      }
-      return result;
     }
 
     function updateAdminKPIs() {
@@ -490,7 +455,7 @@
           <td class="p-3 font-medium">${item.eventDate}</td>
           <td class="p-3"><span class="px-2 py-0.5 bg-blue-50 text-fam-blue rounded font-semibold text-[11px]">${item.evaluatorSigla}</span></td>
           <td class="p-3 font-bold text-gray-800">Banner ${item.bannerNumber}</td>
-          <td class="p-3 text-center font-bold text-emerald-600">${item.totalScore.toFixed(2)}</td>
+          <td class="p-3 text-center font-bold text-emerald-600">${parseFloat(item.totalScore).toFixed(2)}</td>
           <td class="p-3 text-gray-500 text-[11px]">${item.timestamp}</td>
         `;
         tbody.appendChild(tr);
@@ -503,7 +468,7 @@
 
       evaluationsData.forEach(item => {
         if (!bannerScores[item.bannerNumber]) bannerScores[item.bannerNumber] = { sum: 0, count: 0 };
-        bannerScores[item.bannerNumber].sum += item.totalScore;
+        bannerScores[item.bannerNumber].sum += parseFloat(item.totalScore);
         bannerScores[item.bannerNumber].count += 1;
 
         if (!evaluatorCounts[item.evaluatorSigla]) evaluatorCounts[item.evaluatorSigla] = 0;
@@ -552,7 +517,7 @@
       const summary = {};
       evaluationsData.forEach(i => {
         if(!summary[i.bannerNumber]) summary[i.bannerNumber] = { sum: 0, count: 0 };
-        summary[i.bannerNumber].sum += i.totalScore;
+        summary[i.bannerNumber].sum += parseFloat(i.totalScore);
         summary[i.bannerNumber].count += 1;
       });
       for(let b in summary) {
