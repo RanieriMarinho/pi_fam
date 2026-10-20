@@ -132,19 +132,19 @@
           <h2 class="text-lg sm:text-xl font-bold text-fam-navy flex items-center gap-2">
             <i class="fa-solid fa-clipboard-check text-fam-blue"></i> Ficha de Avaliação do PI
           </h2>
-          <p class="text-xs text-gray-500 mt-0.5">Informe a sigla e o número do banner (entre 4001 e 4310) para avaliar.</p>
+          <p class="text-xs text-gray-500 mt-0.5">Informe a sigla (exatamente 2 letras) e o banner (4001 a 4310) para avaliar.</p>
         </div>
 
         <form id="form-evaluation" onsubmit="submitEvaluation(event)" class="space-y-6">
-          <!-- Modificado para 2 colunas, pois a data do evento agora é automática -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 p-3 sm:p-4 bg-gray-50 rounded-xl border border-gray-200/80">
             <div>
-              <label for="evaluator-sigla" class="block text-xs font-bold text-gray-700 uppercase mb-1">Sigla do Avaliador *</label>
-              <input type="text" id="evaluator-sigla" required placeholder="Ex: ABC" oninput="this.value = this.value.toUpperCase()" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm uppercase outline-none">
+              <label for="evaluator-sigla" class="block text-xs font-bold text-gray-700 uppercase mb-1">Sigla do Avaliador (Apenas 2 Letras) *</label>
+              <!-- Bloqueia números e caracteres especiais em tempo real, permitindo apenas letras -->
+              <input type="text" id="evaluator-sigla" required maxlength="2" placeholder="Ex: AB" oninput="this.value = this.value.toUpperCase().replace(/[^A-Z]/g, '')" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm uppercase outline-none">
             </div>
             <div>
-              <label for="banner-number" class="block text-xs font-bold text-gray-700 uppercase mb-1">Número do Banner *</label>
-              <input type="number" id="banner-number" required min="4001" max="4310" placeholder="4001 a 4310" oninput="if(this.value.length > 4) this.value = this.value.slice(0, 4);" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm outline-none">
+              <label for="banner-number" class="block text-xs font-bold text-gray-700 uppercase mb-1">Número do Banner (4001 a 4310) *</label>
+              <input type="number" id="banner-number" required min="4001" max="4310" placeholder="Ex: 4001" oninput="if(this.value.length > 4) this.value = this.value.slice(0, 4);" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm outline-none">
             </div>
           </div>
 
@@ -338,11 +338,15 @@
     async function submitEvaluation(e) {
       e.preventDefault();
       
-      // Data do evento definida automaticamente como a data de hoje (AAAA-MM-DD)
       const todayDate = new Date().toISOString().split('T')[0];
-      
       const siglaVal = document.getElementById('evaluator-sigla').value.trim().toUpperCase();
       const bannerVal = parseInt(document.getElementById('banner-number').value.trim(), 10);
+
+      // Validação estrita da sigla (exatamente 2 letras alfabéticas)
+      if (siglaVal.length !== 2 || !/^[A-Z]{2}$/.test(siglaVal)) {
+        showToast('A sigla do avaliador deve conter exatamente 2 letras!', 'error');
+        return;
+      }
 
       // Validação restrita do número do banner (entre 4001 e 4310)
       if (isNaN(bannerVal) || bannerVal < 4001 || bannerVal > 4310) {
