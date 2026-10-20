@@ -139,8 +139,8 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 p-3 sm:p-4 bg-gray-50 rounded-xl border border-gray-200/80">
             <div>
               <label for="evaluator-sigla" class="block text-xs font-bold text-gray-700 uppercase mb-1">Sigla do Avaliador (Apenas 2 Letras) *</label>
-              <!-- Bloqueia números e caracteres especiais em tempo real, permitindo apenas letras -->
-              <input type="text" id="evaluator-sigla" required maxlength="2" placeholder="Ex: AB" oninput="this.value = this.value.toUpperCase().replace(/[^A-Z]/g, '')" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm uppercase outline-none">
+              <!-- maxlength="2" restringe no teclado e onblur valida assim que clica fora -->
+              <input type="text" id="evaluator-sigla" required maxlength="2" placeholder="Ex: AB" oninput="this.value = this.value.toUpperCase().replace(/[^A-Z]/g, '')" onblur="validateSigla()" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm uppercase outline-none">
             </div>
             <div>
               <label for="banner-number" class="block text-xs font-bold text-gray-700 uppercase mb-1">Número do Banner (4001 a 4310) *</label>
@@ -297,6 +297,16 @@
       });
     }
 
+    // Validação automática ao clicar fora do campo da sigla (evento blur)
+    function validateSigla() {
+      const input = document.getElementById('evaluator-sigla');
+      const val = input.value.trim();
+      if (val.length > 0 && val.length < 2) {
+        showToast('A sigla do avaliador deve conter exatamente 2 letras!', 'error');
+        input.focus();
+      }
+    }
+
     function handleLogin(e) {
       e.preventDefault();
       const u = document.getElementById('login-username').value.trim();
@@ -311,6 +321,7 @@
         setSessionUser('admin');
         showToast('Login efetuado como Administrador!');
       } else {
+        err.classList.add('hidden'); // Corrigido para exibir erro
         err.classList.remove('hidden');
       }
     }
@@ -345,12 +356,14 @@
       // Validação estrita da sigla (exatamente 2 letras alfabéticas)
       if (siglaVal.length !== 2 || !/^[A-Z]{2}$/.test(siglaVal)) {
         showToast('A sigla do avaliador deve conter exatamente 2 letras!', 'error');
+        document.getElementById('evaluator-sigla').focus();
         return;
       }
 
       // Validação restrita do número do banner (entre 4001 e 4310)
       if (isNaN(bannerVal) || bannerVal < 4001 || bannerVal > 4310) {
         showToast('O número do banner deve ser exatamente entre 4001 e 4310!', 'error');
+        document.getElementById('banner-number').focus();
         return;
       }
 
