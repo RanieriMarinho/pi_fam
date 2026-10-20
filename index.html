@@ -285,8 +285,24 @@
     window.onload = function() {
       buildQuestionsForm();
       const savedUser = sessionStorage.getItem('fam_pi_user');
-      if (savedUser) { setSessionUser(savedUser); } else { showScreen('screen-login'); }
+      if (savedUser) { 
+        setSessionUser(savedUser); 
+      } else { 
+        showScreen('screen-login'); 
+      }
+      // Carrega os dados em segundo plano para validar duplicidade mesmo antes de entrar no admin
+      preloadEvaluations();
     };
+
+    // Busca os dados da planilha para verificar duplicidade antecipadamente
+    async function preloadEvaluations() {
+      try {
+        const response = await fetch(GOOGLE_SCRIPT_URL);
+        evaluationsData = await response.json();
+      } catch (err) {
+        console.error('Erro ao pré-carregar dados:', err);
+      }
+    }
 
     function buildQuestionsForm() {
       const container = document.getElementById('questions-container');
@@ -356,7 +372,7 @@
       document.getElementById('user-session').classList.remove('hidden');
       document.getElementById('user-role-text').innerText = role === 'admin' ? 'Administrador' : 'Professor';
       if (role === 'admin') { showScreen('screen-admin'); renderAdminDashboard(); }
-      else { showScreen('screen-professor'); }
+      else { showScreen('screen-professor'); preloadEvaluations(); }
     }
 
     function logout() {
@@ -376,7 +392,7 @@
       
       const todayDate = new Date().toISOString().split('T')[0];
       const siglaVal = document.getElementById('evaluator-sigla').value.trim().toUpperCase();
-      const bannerVal = parseInt(document.getElementById('banner-number').value.trim(), 10);
+      const bannerVal = document.getElementById('banner-number').value.trim();
 
       if (!ALLOWED_SIGLAS.includes(siglaVal)) {
         showToast('Sigla do avaliador não consta na lista autorizada!', 'error');
@@ -384,8 +400,28 @@
         return;
       }
 
-      if (isNaN(bannerVal) || bannerVal < 4001 || bannerVal > 4310) {
+      const bannerNum = parseInt(bannerVal, 10);
+      if (isNaN(bannerNum) || bannerNum < 4001 || bannerNum > 4310) {
         showToast('O número do banner deve ser exatamente entre 4001 e 4310!', 'error');
+        document.getElementById('banner-number').focus();
+        return;
+      }
+
+      // ATUALIZA OS DADOS DA NUVEM ANTES DE VALIDAR A DUPLICIDADE
+      try {
+        const response = await fetch(GOOGLE_SCRIPT_URL);
+        evaluationsData = await response.json();
+      } catch (err) {
+        // Se falhar ao buscar, usa os dados locais em cache
+      }
+
+      // TRAVA ANTI-DUPLICIDADE: Verifica se esta sigla já avaliou este banner
+      const alreadyEvaluated = evaluationsData.some(item => 
+        item.evaluatorSigla === siglaVal && String(item.bannerNumber) === String(bannerVal)
+      );
+
+      if (alreadyEvaluated) {
+        showToast(`Atenção: A sigla [${siglaVal}] já avaliou o Banner ${bannerVal} anteriormente!`, 'error');
         document.getElementById('banner-number').focus();
         return;
       }
@@ -408,7 +444,7 @@
         id: Date.now().toString(),
         eventDate: todayDate,
         evaluatorSigla: siglaVal,
-        bannerNumber: bannerVal.toString(),
+        bannerNumber: bannerVal,
         answers: questionAnswers,
         totalScore: Math.round(totalPoints * 1000) / 1000,
         timestamp: new Date().toLocaleString('pt-BR')
@@ -428,6 +464,7 @@
 
         showToast(`Avaliação do Banner ${bannerVal} enviada com sucesso!`);
         resetEvalForm();
+        preloadEvaluations(); // Atualiza os dados locais após enviar
       } catch (err) {
         showToast('Erro ao enviar. Verifique sua conexão.', 'error');
       } finally {
