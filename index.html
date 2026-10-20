@@ -203,15 +203,31 @@
         </div>
       </div>
 
-      <!-- Charts -->
+      <!-- Charts & Evaluator Summary List -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        <!-- Gráfico: Nota por Banner -->
         <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 space-y-3">
           <h3 class="font-bold text-gray-800 text-xs sm:text-sm"><i class="fa-solid fa-star text-fam-gold"></i> Nota Média por Banner</h3>
           <div class="relative h-60 w-full"><canvas id="chart-banner-scores"></canvas></div>
         </div>
-        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 space-y-3">
-          <h3 class="font-bold text-gray-800 text-xs sm:text-sm"><i class="fa-solid fa-users text-fam-blue"></i> Avaliações por Sigla</h3>
-          <div class="relative h-60 w-full"><canvas id="chart-evaluator-counts"></canvas></div>
+
+        <!-- Substituído: Resumo de Avaliações por Sigla em Tabela/Lista -->
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 space-y-3 flex flex-col">
+          <h3 class="font-bold text-gray-800 text-xs sm:text-sm"><i class="fa-solid fa-users text-fam-blue"></i> Resumo de Avaliações por Sigla</h3>
+          <div class="overflow-y-auto max-h-60 border border-gray-100 rounded-xl">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-gray-50 border-b border-gray-200 text-[11px] font-bold text-gray-600 uppercase">
+                  <th class="p-2.5 pl-4">Sigla</th>
+                  <th class="p-2.5 text-center">Total de Avaliações</th>
+                  <th class="p-2.5 pr-4 text-right">Percentual</th>
+                </tr>
+              </thead>
+              <tbody id="evaluator-summary-table-body" class="divide-y divide-gray-100 text-xs text-gray-700">
+                <tr><td colspan="3" class="p-4 text-center text-gray-400">Nenhum dado carregado.</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -258,7 +274,6 @@
     let evaluationsData = [];
     let currentRatings = {};
     let chartBannerScoresInstance = null;
-    let chartEvaluatorCountsInstance = null;
 
     window.onload = function() {
       buildQuestionsForm();
@@ -427,6 +442,7 @@
         updateAdminKPIs();
         populateAdminTable();
         renderAdminCharts();
+        renderEvaluatorSummaryTable();
         showToast('Painel atualizado com sucesso!');
       } catch (err) {
         showToast('Erro ao carregar dados do painel.', 'error');
@@ -462,24 +478,51 @@
       });
     }
 
+    // Renderiza a lista/tabela resumida de avaliações por sigla com total e percentual
+    function renderEvaluatorSummaryTable() {
+      const tbody = document.getElementById('evaluator-summary-table-body');
+      tbody.innerHTML = '';
+      
+      if (evaluationsData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-gray-400">Nenhum dado registrado.</td></tr>`;
+        return;
+      }
+
+      const evaluatorCounts = {};
+      evaluationsData.forEach(item => {
+        const sigla = item.evaluatorSigla || 'NI';
+        evaluatorCounts[sigla] = (evaluatorCounts[sigla] || 0) + 1;
+      });
+
+      const totalEvals = evaluationsData.length;
+      const sortedEvaluators = Object.keys(evaluatorCounts).sort();
+
+      sortedEvaluators.forEach(sigla => {
+        const count = evaluatorCounts[sigla];
+        const percentage = ((count / totalEvals) * 100).toFixed(1);
+
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-gray-50 transition-colors';
+        tr.innerHTML = `
+          <td class="p-2.5 pl-4"><span class="px-2 py-0.5 bg-blue-50 text-fam-blue rounded font-bold text-[11px]">${sigla}</span></td>
+          <td class="p-2.5 text-center font-semibold text-gray-800">${count}</td>
+          <td class="p-2.5 pr-4 text-right font-medium text-emerald-600">${percentage}%</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
     function renderAdminCharts() {
       const bannerScores = {};
-      const evaluatorCounts = {};
 
       evaluationsData.forEach(item => {
         if (!bannerScores[item.bannerNumber]) bannerScores[item.bannerNumber] = { sum: 0, count: 0 };
         bannerScores[item.bannerNumber].sum += parseFloat(item.totalScore);
         bannerScores[item.bannerNumber].count += 1;
-
-        if (!evaluatorCounts[item.evaluatorSigla]) evaluatorCounts[item.evaluatorSigla] = 0;
-        evaluatorCounts[item.evaluatorSigla] += 1;
       });
 
       const banners = Object.keys(bannerScores).sort();
       const avgScores = banners.map(b => (bannerScores[b].sum / bannerScores[b].count).toFixed(2));
-
-      const evaluators = Object.keys(evaluatorCounts);
-      const counts = evaluators.map(e => evaluatorCounts[e]);
 
       const ctxBanner = document.getElementById('chart-banner-scores').getContext('2d');
       if (chartBannerScoresInstance) chartBannerScoresInstance.destroy();
@@ -490,17 +533,6 @@
           datasets: [{ label: 'Média de Pontuação', data: banners.length ? avgScores : [0], backgroundColor: '#004B87', borderRadius: 6 }]
         },
         options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 1.0 } } }
-      });
-
-      const ctxEval = document.getElementById('chart-evaluator-counts').getContext('2d');
-      if (chartEvaluatorCountsInstance) chartEvaluatorCountsInstance.destroy();
-      chartEvaluatorCountsInstance = new Chart(ctxEval, {
-        type: 'doughnut',
-        data: {
-          labels: evaluators.length ? evaluators : ['Nenhum'],
-          datasets: [{ data: evaluators.length ? counts : [1], backgroundColor: ['#004B87', '#F36F21', '#FFB800', '#00A3E0', '#10B981'] }]
-        },
-        options: { responsive: true, maintainAspectRatio: false }
       });
     }
 
@@ -529,14 +561,16 @@
 
     function exportEvaluatorSummaryCSV() {
       if (evaluationsData.length === 0) { showToast('Não há dados para exportar.', 'error'); return; }
-      let csv = 'Sigla do Avaliador,Total de Avaliacoes Realizadas\n';
+      let csv = 'Sigla do Avaliador,Total de Avaliacoes,Percentual\n';
       const summary = {};
       evaluationsData.forEach(i => {
         if(!summary[i.evaluatorSigla]) summary[i.evaluatorSigla] = 0;
         summary[i.evaluatorSigla] += 1;
       });
+      const totalEvals = evaluationsData.length;
       for(let e in summary) {
-        csv += `"${e}","${summary[e]}"\n`;
+        let pct = ((summary[e] / totalEvals) * 100).toFixed(1) + '%';
+        csv += `"${e}","${summary[e]}","${pct}"\n`;
       }
       downloadCSV(csv, 'resumo_por_avaliador.csv');
     }
