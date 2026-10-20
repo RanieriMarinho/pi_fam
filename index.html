@@ -1,557 +1,666 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Avaliação - PI FAM</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js para os Dashboards -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- FontAwesome para Ícones -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        .star-rating input { display: none; }
-        .star-rating label { color: #cbd5e1; cursor: pointer; font-size: 1.75rem; transition: color 0.2s; }
-        .star-rating input:checked ~ label,
-        .star-rating label:hover,
-        .star-rating label:hover ~ label { color: #eab308; }
-        /* Trava básica contra seleção de texto e clique direito */
-        body {
-            user-select: none;
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Avaliação - PI FAM</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts: Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          colors: {
+            fam: {
+              navy: '#0A192F', blue: '#004B87', orange: '#F36F21',
+              lightBlue: '#00A3E0', gold: '#FFB800', goldHover: '#E0A100',
+              bg: '#F4F7FA', card: '#FFFFFF'
+            }
+          }
         }
-    </style>
+      }
+    }
+  </script>
+
+  <style>
+    .star-btn { transition: transform 0.15s ease, color 0.15s ease, background-color 0.15s ease; }
+    .star-btn:hover { transform: scale(1.05); }
+    .star-btn.selected { background-color: #FEF3C7; border-color: #F59E0B; color: #D97706; }
+  </style>
+
+  <!-- SCRIPT DE SEGURANÇA -->
+  <script>
+    document.addEventListener('contextmenu', function(e) { e.preventDefault(); return false; });
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'C' || e.key === 'J' || e.key === 'K')) || (e.ctrlKey && (e.key === 'U' || e.key === 'u' || e.key === 'S' || e.key === 's'))) {
+        e.preventDefault(); return false;
+      }
+    });
+  </script>
 </head>
-<body class="bg-slate-50 min-h-screen flex flex-col justify-between text-slate-800" oncontextmenu="return false;">
+<body class="bg-fam-bg text-gray-800 font-sans min-h-screen flex flex-col antialiased">
 
-    <!-- Cabeçalho -->
-    <header class="bg-blue-900 text-white shadow-md">
-        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div class="flex items-center gap-3">
-                <div class="bg-white p-2 rounded shadow flex items-center justify-center">
-                    <!-- Espaço para o Logo da FAM -->
-                    <span class="text-blue-900 font-extrabold text-xl tracking-wider">FAM</span>
-                </div>
-                <div>
-                    <h1 class="text-lg font-bold">Projeto Integrador (PI)</h1>
-                    <p class="text-xs text-blue-200">Sistema Oficial de Avaliação</p>
-                </div>
-            </div>
-            <div id="userInfo" class="hidden flex items-center gap-4">
-                <span id="userRoleDisplay" class="text-sm bg-blue-800 px-3 py-1 rounded-full border border-blue-700"></span>
-                <button onclick="logout()" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded text-sm transition font-medium flex items-center gap-1.5 shadow">
-                    <i class="fa-solid fa-right-from-bracket"></i> Sair
-                </button>
-            </div>
+  <!-- Header Global -->
+  <header class="bg-fam-navy text-white shadow-md sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="bg-white rounded-lg p-1.5 flex items-center justify-center shadow-sm">
+          <img src="fam.png" alt="Logo FAM" class="h-6 sm:h-7 w-auto object-contain">
         </div>
-    </header>
+        <div>
+          <h1 class="font-bold text-sm sm:text-base md:text-lg leading-tight">Projeto Integrador</h1>
+          <p class="text-[10px] sm:text-xs text-blue-200">Sistema Oficial de Avaliação</p>
+        </div>
+      </div>
 
-    <!-- Modal de Alerta Centralizado -->
-    <div id="customModal" class="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center hidden">
-        <div class="bg-white p-6 rounded-xl shadow-2xl max-w-md w-full mx-4 border-t-4 border-red-600 text-center animate-bounce">
-            <div class="text-red-600 text-4xl mb-3">
-                <i class="fa-solid fa-triangle-exclamation"></i>
-            </div>
-            <h3 class="text-lg font-bold text-slate-800 mb-2">Atenção</h3>
-            <p id="modalMessage" class="text-red-600 font-bold text-base mb-5"></p>
-            <button onclick="closeModal()" class="bg-blue-900 hover:bg-blue-800 text-white font-bold px-6 py-2 rounded-lg transition shadow">
-                Entendido
-            </button>
-        </div>
+      <div id="user-session" class="hidden flex items-center space-x-3 sm:space-x-4">
+        <span id="user-badge" class="text-[11px] sm:text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-900/80 border border-blue-400 text-blue-100 flex items-center gap-1.5">
+          <i class="fa-solid fa-user text-fam-gold"></i>
+          <span id="user-role-text">Prof</span>
+        </span>
+        <button onclick="logout()" class="text-gray-300 hover:text-white text-xs sm:text-sm flex items-center gap-1 transition-colors">
+          <i class="fa-solid fa-right-from-bracket"></i>
+          <span class="hidden sm:inline">Sair</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Container Principal -->
+  <main class="flex-grow max-w-7xl w-full mx-auto p-3 sm:p-6 lg:p-8">
+
+    <!-- Toast Notification Message (Cantos inferior direito - sutil) -->
+    <div id="toast" class="hidden fixed bottom-5 right-5 z-50 flex items-center p-4 mb-4 text-gray-800 bg-white rounded-xl shadow-2xl border-l-4 border-green-500 transition-all duration-300 max-w-md w-[90%] sm:w-auto" role="alert">
+      <div id="toast-icon" class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 text-green-500 bg-green-100 rounded-lg">
+        <i class="fa-solid fa-check"></i>
+      </div>
+      <div id="toast-msg" class="ml-3 text-xs sm:text-sm font-medium">Operação realizada com sucesso.</div>
+      <button type="button" onclick="hideToast()" class="ml-auto -mx-1.5 -my-1.5 bg-white text-gray-400 hover:text-gray-900 rounded-lg p-1.5 hover:bg-gray-100 inline-flex items-center justify-center h-8 w-8">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
     </div>
 
-    <!-- Conteúdo Principal -->
-    <main class="max-w-7xl mx-auto px-4 py-8 flex-grow w-full">
+    <!-- MODAL DE ALERTA CENTRALIZADO (DESTAQUE EM VERMELHO E NEGRITO) -->
+    <div id="center-modal-alert" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div class="bg-white rounded-2xl shadow-2xl border-4 border-red-500 max-w-lg w-full p-6 text-center space-y-4 animate-bounce-short">
+        <div class="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto text-3xl">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <h3 class="text-xl font-bold text-gray-900 uppercase tracking-wide">Atenção! Erro de Validação</h3>
+        <p id="center-modal-msg" class="text-base font-bold text-red-600 leading-relaxed"></p>
+        <div class="pt-2">
+          <button type="button" onclick="closeCenterModal()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all text-base uppercase tracking-wider">
+            Entendido, Refazer / Corrigir
+          </button>
+        </div>
+      </div>
+    </div>
 
-        <!-- Tela de Login -->
-        <div id="loginView" class="max-w-md mx-auto bg-white rounded-xl shadow-lg border border-slate-200 p-8">
-            <div class="text-center mb-6">
-                <div class="inline-block p-3 bg-blue-50 text-blue-900 rounded-full text-3xl mb-2">
-                    <i class="fa-solid fa-lock"></i>
-                </div>
-                <h2 class="text-2xl font-bold text-slate-900">Acesso ao Sistema</h2>
-                <p class="text-sm text-slate-500">Entre com suas credenciais para continuar</p>
-            </div>
-
-            <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-semibold text-slate-700 mb-1">Usuário</label>
-                    <input type="text" id="username" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-900 focus:outline-none" placeholder="Digite seu usuário">
-                </div>
-                <div>
-                    <label class="block text-sm font-semibold text-slate-700 mb-1">Senha</label>
-                    <input type="password" id="password" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-900 focus:outline-none" placeholder="Digite sua senha">
-                </div>
-                <button type="submit" class="w-full bg-blue-900 hover:bg-blue-800 text-white font-bold py-2.5 rounded-lg transition shadow-md">
-                    Entrar no Sistema
-                </button>
-            </form>
+    <!-- TELA 1: LOGIN -->
+    <section id="screen-login" class="flex items-center justify-center py-6 sm:py-12 px-2">
+      <div class="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
+        <div class="bg-fam-blue p-6 text-white text-center relative">
+          <div class="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-10 -mt-10 pointer-events-none"></div>
+          <i class="fa-solid fa-graduation-cap text-3xl sm:text-4xl mb-2 text-fam-gold"></i>
+          <h2 class="text-xl sm:text-2xl font-bold">Portal de Avaliação</h2>
+          <p class="text-xs text-blue-100 mt-1">Acesse com suas credenciais para prosseguir</p>
         </div>
 
-        <!-- Painel do Professor (Formulário de Avaliação) -->
-        <div id="professorView" class="hidden max-w-3xl mx-auto bg-white rounded-xl shadow-lg border border-slate-200 p-8">
-            <div class="border-b border-slate-200 pb-4 mb-6">
-                <h2 class="text-2xl font-bold text-slate-900">Formulário de Avaliação de Apresentação</h2>
-                <p class="text-sm text-slate-500">Preencha todos os campos obrigatórios abaixo.</p>
+        <form id="form-login" onsubmit="handleLogin(event)" class="p-5 sm:p-8 space-y-4 sm:space-y-5">
+          <div>
+            <label for="login-username" class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">Usuário</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400"><i class="fa-solid fa-user"></i></span>
+              <input type="text" id="login-username" required placeholder="Digite seu usuário" class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-300 text-gray-900 rounded-xl focus:ring-2 focus:ring-fam-blue outline-none text-sm">
             </div>
+          </div>
 
-            <form id="evaluationForm" onsubmit="submitEvaluation(event)" class="space-y-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-1">Sigla do(a) Avaliador(a)</label>
-                        <input type="text" id="evaluatorSigla" required maxlength="2" oninput="validateSiglaInput(this)" onblur="validateSiglaBlur(this)" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-900 focus:outline-none uppercase font-bold" placeholder="Ex: AA">
-                        <span class="text-xs text-slate-500 mt-1 block">Apenas 2 letras permitidas (da lista autorizada).</span>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-1">Número do Banner (4001 a 4310)</label>
-                        <input type="number" id="bannerNumber" required min="4001" max="4310" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-900 focus:outline-none font-bold" placeholder="Ex: 4010">
-                        <span class="text-xs text-slate-500 mt-1 block">Máximo de 3 avaliações por banner.</span>
-                    </div>
-                </div>
+          <div>
+            <label for="login-password" class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">Senha</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400"><i class="fa-solid fa-lock"></i></span>
+              <input type="password" id="login-password" required placeholder="••••••••" class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-300 text-gray-900 rounded-xl focus:ring-2 focus:ring-fam-blue outline-none text-sm">
+            </div>
+          </div>
 
-                <div class="border-t border-slate-200 pt-4">
-                    <h3 class="font-bold text-lg text-slate-800 mb-4">Critérios de Avaliação</h3>
-                    <div id="questionsContainer" class="space-y-6">
-                        <!-- As questões serão injetadas via JavaScript -->
-                    </div>
-                </div>
+          <div id="login-error" class="hidden p-3 bg-red-50 border-l-4 border-red-500 text-red-700 text-xs rounded">Usuário ou senha incorretos!</div>
 
-                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg transition shadow-md text-lg">
-                    Enviar Avaliação
-                </button>
-            </form>
+          <button type="submit" class="w-full bg-fam-blue hover:bg-fam-navy text-white font-semibold py-3 px-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-sm sm:text-base">
+            <span>Entrar no Sistema</span>
+            <i class="fa-solid fa-arrow-right text-xs"></i>
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- TELA 2: FORMULÁRIO DO PROFESSOR -->
+    <section id="screen-professor" class="hidden max-w-3xl mx-auto space-y-6">
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-6">
+        <div class="border-b border-gray-100 pb-4 mb-6">
+          <h2 class="text-lg sm:text-xl font-bold text-fam-navy flex items-center gap-2">
+            <i class="fa-solid fa-clipboard-check text-fam-blue"></i> Ficha de Avaliação do PI
+          </h2>
+          <p class="text-xs text-gray-500 mt-0.5">Informe sua sigla autorizada e o banner (4001 a 4310) para avaliar.</p>
         </div>
 
-        <!-- Painel do Admin (Dashboard & Relatórios) -->
-        <div id="adminView" class="hidden space-y-8">
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-xl shadow border border-slate-200">
-                <div>
-                    <h2 class="text-2xl font-bold text-slate-900">Painel do Administrador</h2>
-                    <p class="text-sm text-slate-500">Acompanhe os resultados consolidados das avaliações do PI.</p>
-                </div>
-                <div class="flex flex-wrap items-center gap-3">
-                    <button onclick="loadAdminData()" class="bg-blue-900 hover:bg-blue-800 text-white px-4 py-2 rounded-lg text-sm transition font-medium shadow flex items-center gap-2">
-                        <i class="fa-solid fa-rotate"></i> Atualizar Dados
-                    </button>
-                    <button onclick="exportToCSV()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm transition font-medium shadow flex items-center gap-2">
-                        <i class="fa-solid fa-file-csv"></i> Exportar CSV Geral
-                    </button>
-                </div>
+        <form id="form-evaluation" onsubmit="submitEvaluation(event)" class="space-y-6">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 p-3 sm:p-4 bg-gray-50 rounded-xl border border-gray-200/80">
+            <div>
+              <label for="evaluator-sigla" class="block text-xs font-bold text-gray-700 uppercase mb-1">Sigla do Avaliador (Autorizada) *</label>
+              <input type="text" id="evaluator-sigla" required maxlength="2" placeholder="Ex: AA" oninput="this.value = this.value.toUpperCase().replace(/[^A-Z]/g, '')" onblur="validateSigla()" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm uppercase outline-none">
             </div>
+            <div>
+              <label for="banner-number" class="block text-xs font-bold text-gray-700 uppercase mb-1">Número do Banner (4001 a 4310) *</label>
+              <input type="number" id="banner-number" required min="4001" max="4310" placeholder="Ex: 4001" oninput="if(this.value.length > 4) this.value = this.value.slice(0, 4);" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm outline-none">
+            </div>
+          </div>
 
-            <!-- Cards de Resumo -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="bg-white p-6 rounded-xl shadow border border-slate-200 flex items-center justify-between">
-                    <div>
-                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total de Avaliações</p>
-                        <h3 id="statTotalEvals" class="text-3xl font-bold text-slate-900 mt-1">0</h3>
-                    </div>
-                    <div class="p-3 bg-blue-50 text-blue-900 rounded-xl text-2xl"><i class="fa-solid fa-clipboard-list"></i></div>
-                </div>
-                <div class="bg-white p-6 rounded-xl shadow border border-slate-200 flex items-center justify-between">
-                    <div>
-                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Banners Avaliados</p>
-                        <h3 id="statTotalBanners" class="text-3xl font-bold text-slate-900 mt-1">0</h3>
-                    </div>
-                    <div class="p-3 bg-emerald-50 text-emerald-600 rounded-xl text-2xl"><i class="fa-solid fa-chalkboard"></i></div>
-                </div>
-                <div class="bg-white p-6 rounded-xl shadow border border-slate-200 flex items-center justify-between">
-                    <div>
-                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Avaliadores Ativos</p>
-                        <h3 id="statTotalEvaluators" class="text-3xl font-bold text-slate-900 mt-1">0</h3>
-                    </div>
-                    <div class="p-3 bg-amber-50 text-amber-600 rounded-xl text-2xl"><i class="fa-solid fa-users"></i></div>
-                </div>
-            </div>
+          <div class="space-y-4">
+            <h3 class="text-xs sm:text-sm font-bold text-gray-800 uppercase border-b pb-2 flex items-center gap-2">
+              <i class="fa-solid fa-list-check text-fam-blue"></i> Critérios de Avaliação (Obrigatórios)
+            </h3>
+            <div id="questions-container" class="space-y-3 sm:space-y-4"></div>
+          </div>
 
-            <!-- Gráficos -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div class="bg-white p-6 rounded-xl shadow border border-slate-200">
-                    <h3 class="text-lg font-bold text-slate-800 mb-4">Nota Média por Número do Banner</h3>
-                    <div class="relative h-72">
-                        <canvas id="chartBannerScore"></canvas>
-                    </div>
-                </div>
-                <div class="bg-white p-6 rounded-xl shadow border border-slate-200">
-                    <h3 class="text-lg font-bold text-slate-800 mb-4">Quantidade de Avaliações por Sigla (Gráfico)</h3>
-                    <div class="relative h-72">
-                        <canvas id="chartEvaluatorCount"></canvas>
-                    </div>
-                </div>
-            </div>
+          <div class="pt-4 border-t border-gray-100 flex flex-col-reverse sm:flex-row items-center justify-end gap-3">
+            <button type="button" onclick="resetEvalForm()" class="w-full sm:w-auto px-4 py-2.5 text-xs text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl font-medium">Limpar Campos</button>
+            <button type="submit" id="btn-submit-eval" class="w-full sm:w-auto px-6 py-2.5 bg-fam-blue hover:bg-fam-navy text-white font-semibold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-xs sm:text-sm">
+              <i class="fa-solid fa-paper-plane"></i>
+              <span>Enviar Avaliação</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
 
-            <!-- Tabela Resumida por Sigla -->
-            <div class="bg-white p-6 rounded-xl shadow border border-slate-200">
-                <h3 class="text-lg font-bold text-slate-800 mb-4">Resumo de Participação por Sigla</h3>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="bg-slate-100 text-slate-700 text-xs uppercase tracking-wider">
-                                <th class="p-3 border-b">Sigla</th>
-                                <th class="p-3 border-b">Total de Avaliações</th>
-                                <th class="p-3 border-b">Percentual (%)</th>
-                            </tr>
-                        </thead>
-                        <tbody id="siglaSummaryTableBody" class="text-sm text-slate-700">
-                            <!-- Preenchido via JS -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Tabela Detalhada -->
-            <div class="bg-white p-6 rounded-xl shadow border border-slate-200">
-                <h3 class="text-lg font-bold text-slate-800 mb-4">Registro Detalhado das Avaliações</h3>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="bg-slate-100 text-slate-700 text-xs uppercase tracking-wider">
-                                <th class="p-3 border-b">Data/Hora</th>
-                                <th class="p-3 border-b">Sigla</th>
-                                <th class="p-3 border-b">Banner</th>
-                                <th class="p-3 border-b">Nota Calculada</th>
-                            </tr>
-                        </thead>
-                        <tbody id="detailedTableBody" class="text-sm text-slate-700">
-                            <!-- Preenchido via JS -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+    <!-- TELA 3: PAINEL ADMIN / DASHBOARD -->
+    <section id="screen-admin" class="hidden space-y-6">
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div>
+          <h2 class="text-lg sm:text-xl font-bold text-fam-navy flex items-center gap-2">
+            <i class="fa-solid fa-chart-line text-fam-blue"></i> Painel Geral do Administrador
+          </h2>
+          <p class="text-xs text-gray-500 mt-0.5">Sincronizado em tempo real com a planilha em nuvem.</p>
         </div>
 
-    </main>
+        <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+          <button onclick="renderAdminDashboard()" class="bg-fam-blue hover:bg-fam-navy text-white text-xs font-semibold px-3 py-2 rounded-xl shadow transition-all flex items-center gap-1.5">
+            <i class="fa-solid fa-rotate"></i> <span>Atualizar Dados</span>
+          </button>
+          <div class="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 w-full sm:w-auto">
+            <button onclick="exportToCSV()" class="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-2 rounded-xl shadow">Detalhado</button>
+            <button onclick="exportSummaryCSV()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-2 rounded-xl shadow">Por Banner</button>
+            <button onclick="exportEvaluatorSummaryCSV()" class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold px-3 py-2 rounded-xl shadow">Por Sigla</button>
+          </div>
+        </div>
+      </div>
 
-    <!-- Rodapé -->
-    <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500">
-        &copy; 2026 Centro Universitário das Faculdades Metropolitanas Unidas (FAM) - Todos os direitos reservados.
-    </footer>
+      <!-- KPI Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 flex items-center gap-4">
+          <div class="p-3 bg-blue-50 text-fam-blue rounded-xl text-xl sm:text-2xl"><i class="fa-solid fa-file-signature"></i></div>
+          <div><p class="text-[11px] font-semibold text-gray-500 uppercase">Total de Avaliações</p><p id="kpi-total-evals" class="text-xl font-bold text-fam-navy">0</p></div>
+        </div>
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 flex items-center gap-4">
+          <div class="p-3 bg-amber-50 text-fam-gold rounded-xl text-xl sm:text-2xl"><i class="fa-solid fa-scroll"></i></div>
+          <div><p class="text-[11px] font-semibold text-gray-500 uppercase">Banners Distintos</p><p id="kpi-total-banners" class="text-xl font-bold text-fam-navy">0</p></div>
+        </div>
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 flex items-center gap-4">
+          <div class="p-3 bg-emerald-50 text-emerald-600 rounded-xl text-xl sm:text-2xl"><i class="fa-solid fa-user-check"></i></div>
+          <div><p class="text-[11px] font-semibold text-gray-500 uppercase">Avaliadores Ativos</p><p id="kpi-total-evaluators" class="text-xl font-bold text-fam-navy">0</p></div>
+        </div>
+      </div>
 
-    <!-- Script Principal -->
-    <script>
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzPztrtAuWVbgGQic4FLTxqrV0AFgxqCc5UY01OWuHw95ZhH3lSBqmbEVjMP2hc_58Z5w/exec";
-        
-        const ALLOWED_SIGLAS = ["AA", "AD", "AG", "AS", "DG", "EA", "EC", "ES", "GM", "GS", "HN", "HR", "JP", "JR", "LF", "LP", "LR", "LS", "MB", "MC", "MP", "MY", "MZ", "OS", "PV", "RB", "RM", "RN", "TL", "VS", "WB"];
-        
-        const questions = [
-            "1. Clareza na apresentação do problema e dos objetivos do projeto.",
-            "2. Domínio do conteúdo e fundamentação teórica/técnica demonstrada.",
-            "3. Qualidade da solução desenvolvida (protótipo, software, produto ou modelo).",
-            "4. Impacto, aplicabilidade e relevância prática da proposta para a sociedade ou mercado.",
-            "5. Qualidade do material visual e clareza na comunicação da equipe."
-        ];
+      <!-- Charts & Evaluator Summary List -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        <!-- Gráfico: Nota por Banner -->
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 space-y-3">
+          <h3 class="font-bold text-gray-800 text-xs sm:text-sm"><i class="fa-solid fa-star text-fam-gold"></i> Nota Média por Banner</h3>
+          <div class="relative h-60 w-full"><canvas id="chart-banner-scores"></canvas></div>
+        </div>
 
-        let allSubmissions = [];
-        let bannerChartInstance = null;
-        let evaluatorChartInstance = null;
+        <!-- Resumo de Avaliações por Sigla em Tabela/Lista -->
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 space-y-3 flex flex-col">
+          <h3 class="font-bold text-gray-800 text-xs sm:text-sm"><i class="fa-solid fa-users text-fam-blue"></i> Resumo de Avaliações por Sigla</h3>
+          <div class="overflow-y-auto max-h-60 border border-gray-100 rounded-xl">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-gray-50 border-b border-gray-200 text-[11px] font-bold text-gray-600 uppercase">
+                  <th class="p-2.5 pl-4">Sigla</th>
+                  <th class="p-2.5 text-center">Total de Avaliações</th>
+                  <th class="p-2.5 pr-4 text-right">Percentual</th>
+                </tr>
+              </thead>
+              <tbody id="evaluator-summary-table-body" class="divide-y divide-gray-100 text-xs text-gray-700">
+                <tr><td colspan="3" class="p-4 text-center text-gray-400">Nenhum dado carregado.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
 
-        // Inicialização
-        document.addEventListener("DOMContentLoaded", () => {
-            renderQuestions();
+      <!-- Tabela -->
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+        <div class="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+          <h3 class="font-bold text-gray-800 text-xs sm:text-sm"><i class="fa-solid fa-table text-fam-blue"></i> Registros Sincronizados</h3>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse min-w-[650px]">
+            <thead>
+              <tr class="bg-gray-100/70 border-b border-gray-200 text-[11px] font-bold text-gray-600 uppercase">
+                <th class="p-3">Data Evento</th>
+                <th class="p-3">Avaliador</th>
+                <th class="p-3">Banner</th>
+                <th class="p-3 text-center">Pontuação Total</th>
+                <th class="p-3">Data/Hora Registro</th>
+              </tr>
+            </thead>
+            <tbody id="admin-table-body" class="divide-y divide-gray-100 text-xs text-gray-700"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="bg-white border-t border-gray-200 py-4 mt-auto">
+    <div class="max-w-7xl mx-auto px-4 text-center text-xs text-gray-500">&copy; 2026 FAM - Faculdade de Americana. Sistema Integrado.</div>
+  </footer>
+
+  <!-- SCRIPT PRINCIPAL -->
+  <script>
+    const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwv81MJVyJDlPqSlEDebGcx_QIto-PE9Fp-NwFe26jbz92ajtAeHfp_pd9jEG96IeyUKg/exec';
+
+    // Lista oficial de siglas permitidas
+    const ALLOWED_SIGLAS = [
+      'AA', 'AD', 'AG', 'AS', 'DG', 'EA', 'EC', 'ES', 'GM', 'GS', 
+      'HN', 'HR', 'JP', 'JR', 'LF', 'LP', 'LR', 'LS', 'MB', 'MC', 
+      'MP', 'MY', 'MZ', 'OS', 'PV', 'RB', 'RM', 'RN', 'TL', 'VS', 'WB'
+    ];
+
+    const PI_QUESTIONS = [
+      { id: 'q1', title: '1. Contextualização e Problema', desc: 'Apresentação clara do tema, justificativa e formulação do problema.' },
+      { id: 'q2', title: '2. Fundamentação Teórica', desc: 'Embasamento conceitual adequado e fundamentado nos conteúdos do curso.' },
+      { id: 'q3', title: '3. Metodologia e Solução Proposta', desc: 'Coerência nos procedimentos metodológicos e viabilidade da solução.' },
+      { id: 'q4', title: '4. Apresentação e Domínio do Tema', desc: 'Clareza, postura, articulação e segurança do grupo durante a defesa.' },
+      { id: 'q5', title: '5. Qualidade do Banner e Estética', desc: 'Organização visual, legibilidade, acabamento e síntese das informações.' }
+    ];
+
+    const STAR_WEIGHTS = { 1: 0.02, 2: 0.11, 3: 0.20 };
+    let evaluationsData = [];
+    let currentRatings = {};
+    let chartBannerScoresInstance = null;
+
+    window.onload = function() {
+      buildQuestionsForm();
+      const savedUser = sessionStorage.getItem('fam_pi_user');
+      if (savedUser) { 
+        setSessionUser(savedUser); 
+      } else { 
+        showScreen('screen-login'); 
+      }
+      preloadEvaluations();
+    };
+
+    async function preloadEvaluations() {
+      try {
+        const response = await fetch(GOOGLE_SCRIPT_URL);
+        evaluationsData = await response.json();
+      } catch (err) {
+        console.error('Erro ao pré-carregar dados:', err);
+      }
+    }
+
+    function buildQuestionsForm() {
+      const container = document.getElementById('questions-container');
+      container.innerHTML = '';
+      PI_QUESTIONS.forEach((q) => {
+        const qCard = document.createElement('div');
+        qCard.className = 'p-3 sm:p-4 bg-white rounded-xl border border-gray-200 space-y-2';
+        qCard.innerHTML = `
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div>
+              <h4 class="font-bold text-gray-800 text-xs sm:text-sm">${q.title} <span class="text-red-500">*</span></h4>
+              <p class="text-[11px] sm:text-xs text-gray-500">${q.desc}</p>
+            </div>
+            <div class="flex items-center gap-1.5 bg-gray-50 p-1 rounded-lg border border-gray-200">
+              <button type="button" onclick="selectStar('${q.id}', 1)" id="btn-${q.id}-1" class="star-btn px-3 py-1.5 text-xs font-semibold rounded-md border bg-white text-gray-700">1 ★</button>
+              <button type="button" onclick="selectStar('${q.id}', 2)" id="btn-${q.id}-2" class="star-btn px-3 py-1.5 text-xs font-semibold rounded-md border bg-white text-gray-700">2 ★</button>
+              <button type="button" onclick="selectStar('${q.id}', 3)" id="btn-${q.id}-3" class="star-btn px-3 py-1.5 text-xs font-semibold rounded-md border bg-white text-gray-700">3 ★</button>
+            </div>
+          </div>`;
+        container.appendChild(qCard);
+      });
+    }
+
+    function selectStar(questionId, value) {
+      currentRatings[questionId] = value;
+      [1, 2, 3].forEach(val => {
+        const btn = document.getElementById(`btn-${questionId}-${val}`);
+        if (btn) {
+          if (val === value) { btn.classList.add('selected'); btn.classList.remove('bg-white'); }
+          else { btn.classList.remove('selected'); btn.classList.add('bg-white'); }
+        }
+      });
+    }
+
+    function validateSigla() {
+      const input = document.getElementById('evaluator-sigla');
+      const val = input.value.trim().toUpperCase();
+      if (val.length > 0) {
+        if (val.length < 2 || !ALLOWED_SIGLAS.includes(val)) {
+          showCenterAlert('SIGLA INVÁLIDA OU NÃO AUTORIZADA!');
+          input.value = '';
+          input.focus();
+        }
+      }
+    }
+
+    function handleLogin(e) {
+      e.preventDefault();
+      const u = document.getElementById('login-username').value.trim();
+      const p = document.getElementById('login-password').value.trim();
+      const err = document.getElementById('login-error');
+      err.classList.add('hidden');
+
+      if (u === 'professor' && p === 'pi2026') {
+        setSessionUser('professor');
+        showToast('Login efetuado com sucesso!');
+      } else if (u === 'admin' && p === 'fam@2026') {
+        setSessionUser('admin');
+        showToast('Login efetuado como Administrador!');
+      } else {
+        err.classList.remove('hidden');
+      }
+    }
+
+    function setSessionUser(role) {
+      sessionStorage.setItem('fam_pi_user', role);
+      document.getElementById('user-session').classList.remove('hidden');
+      document.getElementById('user-role-text').innerText = role === 'admin' ? 'Administrador' : 'Professor';
+      if (role === 'admin') { showScreen('screen-admin'); renderAdminDashboard(); }
+      else { showScreen('screen-professor'); preloadEvaluations(); }
+    }
+
+    function logout() {
+      sessionStorage.removeItem('fam_pi_user');
+      document.getElementById('user-session').classList.add('hidden');
+      showScreen('screen-login');
+      showToast('Sessão encerrada.', 'info');
+    }
+
+    function showScreen(sId) {
+      ['screen-login', 'screen-professor', 'screen-admin'].forEach(id => document.getElementById(id).classList.add('hidden'));
+      document.getElementById(sId).classList.remove('hidden');
+    }
+
+    async function submitEvaluation(e) {
+      e.preventDefault();
+      
+      const todayDate = new Date().toISOString().split('T')[0];
+      const siglaVal = document.getElementById('evaluator-sigla').value.trim().toUpperCase();
+      const bannerVal = document.getElementById('banner-number').value.trim();
+
+      if (!ALLOWED_SIGLAS.includes(siglaVal)) {
+        showCenterAlert('SIGLA DO AVALIADOR NÃO CONSTA NA LISTA AUTORIZADA!');
+        document.getElementById('evaluator-sigla').focus();
+        return;
+      }
+
+      const bannerNum = parseInt(bannerVal, 10);
+      if (isNaN(bannerNum) || bannerNum < 4001 || bannerNum > 4310) {
+        showCenterAlert('O NÚMERO DO BANNER DEVE SER EXATAMENTE ENTRE 4001 E 4310!');
+        document.getElementById('banner-number').focus();
+        return;
+      }
+
+      // Atualiza os dados da nuvem para garantir verificação de duplicidade precisa
+      try {
+        const response = await fetch(GOOGLE_SCRIPT_URL);
+        evaluationsData = await response.json();
+      } catch (err) {}
+
+      // TRAVA ANTI-DUPLICIDADE COM MODAL CENTRALIZADO
+      const alreadyEvaluated = evaluationsData.some(item => 
+        item.evaluatorSigla === siglaVal && String(item.bannerNumber) === String(bannerVal)
+      );
+
+      if (alreadyEvaluated) {
+        showCenterAlert(`A SIGLA [${siglaVal}] JÁ AVALIOU O BANNER ${bannerVal} ANTERIORMENTE! POR FAVOR, REFAÇA COM OUTRO BANNER.`);
+        document.getElementById('banner-number').focus();
+        return;
+      }
+
+      if (PI_QUESTIONS.some(q => !currentRatings[q.id])) {
+        showCenterAlert('VOCÊ PRECISA AVALIAR TODAS AS QUESTÕES COM ESTRELAS!');
+        return;
+      }
+
+      let totalPoints = 0;
+      const questionAnswers = {};
+      PI_QUESTIONS.forEach(q => {
+        const stars = currentRatings[q.id];
+        const pts = STAR_WEIGHTS[stars] || 0;
+        totalPoints += pts;
+        questionAnswers[q.id] = { stars: stars, points: pts };
+      });
+
+      const newRecord = {
+        id: Date.now().toString(),
+        eventDate: todayDate,
+        evaluatorSigla: siglaVal,
+        bannerNumber: bannerVal,
+        answers: questionAnswers,
+        totalScore: Math.round(totalPoints * 1000) / 1000,
+        timestamp: new Date().toLocaleString('pt-BR')
+      };
+
+      const btn = document.getElementById('btn-submit-eval');
+      btn.disabled = true;
+      btn.innerHTML = 'Enviando...';
+
+      try {
+        await fetch(GOOGLE_SCRIPT_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newRecord)
         });
 
-        function renderQuestions() {
-            const container = document.getElementById("questionsContainer");
-            container.innerHTML = "";
-            questions.forEach((q, index) => {
-                const qDiv = document.createElement("div");
-                qDiv.className = "p-4 bg-slate-50 border border-slate-200 rounded-lg";
-                qDiv.innerHTML = `
-                    <p class="font-semibold text-sm text-slate-800 mb-3">${q} <span class="text-red-500">*</span></p>
-                    <div class="flex items-center gap-6">
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="radio" name="q${index}" value="1" required class="w-4 h-4 text-blue-900 focus:ring-blue-900">
-                            <span class="text-sm font-medium text-slate-700">1 Estrela (0,02 pt)</span>
-                        </label>
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="radio" name="q${index}" value="2" required class="w-4 h-4 text-blue-900 focus:ring-blue-900">
-                            <span class="text-sm font-medium text-slate-700">2 Estrelas (0,11 pt)</span>
-                        </label>
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="radio" name="q${index}" value="3" required class="w-4 h-4 text-blue-900 focus:ring-blue-900">
-                            <span class="text-sm font-medium text-slate-700">3 Estrelas (0,20 pt)</span>
-                        </label>
-                    </div>
-                `;
-                container.appendChild(containerInstance(qDiv));
-            });
-        }
+        showToast(`Avaliação do Banner ${bannerVal} enviada com sucesso!`);
+        resetEvalForm();
+        preloadEvaluations();
+      } catch (err) {
+        showToast('Erro ao enviar. Verifique sua conexão.', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> <span>Enviar Avaliação</span>';
+      }
+    }
 
-        function containerInstance(el) { return el; }
+    function resetEvalForm() {
+      document.getElementById('banner-number').value = '';
+      document.getElementById('evaluator-sigla').value = '';
+      currentRatings = {};
+      buildQuestionsForm();
+    }
 
-        function showModal(msg) {
-            document.getElementById("modalMessage").innerText = msg;
-            document.getElementById("customModal").classList.remove("hidden");
-        }
+    // FUNÇÕES PARA EXIBIR O ALERTA CENTRALIZADO EM DESTAQUE
+    function showCenterAlert(message) {
+      document.getElementById('center-modal-msg').innerText = message;
+      document.getElementById('center-modal-alert').classList.remove('hidden');
+    }
 
-        function closeModal() {
-            document.getElementById("customModal").classList.add("hidden");
-        }
+    function closeCenterModal() {
+      document.getElementById('center-modal-alert').classList.add('hidden');
+    }
 
-        function validateSiglaInput(input) {
-            input.value = input.value.replace(/[^a-zA-Z]/g, "").toUpperCase();
-            if(input.value.length > 2) input.value = input.value.slice(0, 2);
-        }
+    async function renderAdminDashboard() {
+      showToast('Carregando dados da nuvem...', 'info');
+      try {
+        const response = await fetch(GOOGLE_SCRIPT_URL);
+        evaluationsData = await response.json();
+        
+        updateAdminKPIs();
+        populateAdminTable();
+        renderAdminCharts();
+        renderEvaluatorSummaryTable();
+        showToast('Painel atualizado com sucesso!');
+      } catch (err) {
+        showToast('Erro ao carregar dados do painel.', 'error');
+      }
+    }
 
-        function validateSiglaBlur(input) {
-            const val = input.value.trim();
-            if(val.length > 0 && val.length < 2) {
-                showModal("A sigla deve conter exatamente 2 letras.");
-                input.value = "";
-            } else if(val.length === 2 && !ALLOWED_SIGLAS.includes(val)) {
-                showModal("A sigla informada não consta na lista de siglas autorizadas!");
-                input.value = "";
-            }
-        }
+    function updateAdminKPIs() {
+      document.getElementById('kpi-total-evals').innerText = evaluationsData.length;
+      const uniqueBanners = [...new Set(evaluationsData.map(item => item.bannerNumber))];
+      document.getElementById('kpi-total-banners').innerText = uniqueBanners.length;
+      const uniqueEvaluators = [...new Set(evaluationsData.map(item => item.evaluatorSigla))];
+      document.getElementById('kpi-total-evaluators').innerText = uniqueEvaluators.length;
+    }
 
-        function handleLogin(e) {
-            e.preventDefault();
-            const u = document.getElementById("username").value.trim();
-            const p = document.getElementById("password").value.trim();
+    function populateAdminTable() {
+      const tbody = document.getElementById('admin-table-body');
+      tbody.innerHTML = '';
+      if (evaluationsData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-400">Nenhuma avaliação registrada ainda.</td></tr>`;
+        return;
+      }
+      [...evaluationsData].reverse().forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-gray-50/80 transition-colors';
+        tr.innerHTML = `
+          <td class="p-3 font-medium">${item.eventDate}</td>
+          <td class="p-3"><span class="px-2 py-0.5 bg-blue-50 text-fam-blue rounded font-semibold text-[11px]">${item.evaluatorSigla}</span></td>
+          <td class="p-3 font-bold text-gray-800">Banner ${item.bannerNumber}</td>
+          <td class="p-3 text-center font-bold text-emerald-600">${parseFloat(item.totalScore).toFixed(2)}</td>
+          <td class="p-3 text-gray-500 text-[11px]">${item.timestamp}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
 
-            if (u === "professor" && p === "pi2026") {
-                document.getElementById("loginView").classList.add("hidden");
-                document.getElementById("professorView").classList.remove("hidden");
-                document.getElementById("userInfo").classList.remove("hidden");
-                document.getElementById("userRoleDisplay").innerText = "Perfil: Professor";
-            } else if (u === "admin" && p === "fam@2026") {
-                document.getElementById("loginView").classList.add("hidden");
-                document.getElementById("adminView").classList.remove("hidden");
-                document.getElementById("userInfo").classList.remove("hidden");
-                document.getElementById("userRoleDisplay").innerText = "Perfil: Administrador";
-                loadAdminData();
-            } else {
-                showModal("Usuário ou senha incorretos!");
-            }
-        }
+    function renderEvaluatorSummaryTable() {
+      const tbody = document.getElementById('evaluator-summary-table-body');
+      tbody.innerHTML = '';
+      
+      if (evaluationsData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-gray-400">Nenhum dado registrado.</td></tr>`;
+        return;
+      }
 
-        function logout() {
-            document.getElementById("loginView").classList.remove("hidden");
-            document.getElementById("professorView").classList.add("hidden");
-            document.getElementById("adminView").classList.add("hidden");
-            document.getElementById("userInfo").classList.add("hidden");
-            document.getElementById("loginForm").reset();
-            document.getElementById("evaluationForm").reset();
-        }
+      const evaluatorCounts = {};
+      evaluationsData.forEach(item => {
+        const sigla = item.evaluatorSigla || 'NI';
+        evaluatorCounts[sigla] = (evaluatorCounts[sigla] || 0) + 1;
+      });
 
-        async function submitEvaluation(e) {
-            e.preventDefault();
-            const sigla = document.getElementById("evaluatorSigla").value.trim().toUpperCase();
-            const banner = parseInt(document.getElementById("bannerNumber").value);
+      const totalEvals = evaluationsData.length;
+      const sortedEvaluators = Object.keys(evaluatorCounts).sort();
 
-            if (!ALLOWED_SIGLAS.includes(sigla)) {
-                showModal("Sigla inválida ou não autorizada!");
-                return;
-            }
+      sortedEvaluators.forEach(sigla => {
+        const count = evaluatorCounts[sigla];
+        const percentage = ((count / totalEvals) * 100).toFixed(1);
 
-            if (banner < 4001 || banner > 4310) {
-                showModal("O número do banner deve estar estritamente entre 4001 e 4310!");
-                return;
-            }
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-gray-50 transition-colors';
+        tr.innerHTML = `
+          <td class="p-2.5 pl-4"><span class="px-2 py-0.5 bg-blue-50 text-fam-blue rounded font-bold text-[11px]">${sigla}</span></td>
+          <td class="p-2.5 text-center font-semibold text-gray-800">${count}</td>
+          <td class="p-2.5 pr-4 text-right font-medium text-emerald-600">${percentage}%</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
 
-            // BUSCAR DADOS ATUAIS DA PLANILHA PARA VALIDAR TRAVAS DE DUPLICIDADE E LIMITE DE 3 AVALIAÇÕES POR BANNER
-            try {
-                const response = await fetch(GOOGLE_SCRIPT_URL);
-                const data = await response.json();
-                allSubmissions = data || [];
-            } catch (err) {
-                console.error("Erro ao verificar dados remotos:", err);
-            }
+    function renderAdminCharts() {
+      const bannerScores = {};
 
-            // 1. Verificar limite máximo de 3 avaliações por banner
-            const evaluationsForBanner = allSubmissions.filter(item => parseInt(item.bannerNumber) === banner);
-            if (evaluationsForBanner.length >= 3) {
-                showModal(`Atenção: O Banner ${banner} já atingiu o limite máximo de 3 avaliações permitidas!`);
-                return;
-            }
+      evaluationsData.forEach(item => {
+        if (!bannerScores[item.bannerNumber]) bannerScores[item.bannerNumber] = { sum: 0, count: 0 };
+        bannerScores[item.bannerNumber].sum += parseFloat(item.totalScore);
+        bannerScores[item.bannerNumber].count += 1;
+      });
 
-            // 2. Verificar duplicidade (mesma sigla avaliando o mesmo banner)
-            const alreadyEvaluated = evaluationsForBanner.some(item => item.evaluatorSigla === sigla);
-            if (alreadyEvaluated) {
-                showModal(`Atenção: A sigla [${sigla}] já avaliou o Banner ${banner} anteriormente! Cada avaliador pode avaliar um banner apenas uma vez.`);
-                return;
-            }
+      const banners = Object.keys(bannerScores).sort();
+      const avgScores = banners.map(b => (bannerScores[b].sum / bannerScores[b].count).toFixed(2));
 
-            let answers = [];
-            let rawScore = 0;
-            
-            for (let i = 0; i < questions.length; i++) {
-                const radios = document.getElementsByName(`q${i}`);
-                let val = 0;
-                for (let r of radios) {
-                    if (r.checked) {
-                        val = parseInt(r.value);
-                        break;
-                    }
-                }
-                answers.push(val);
-                if (val === 1) rawScore += 0.02;
-                else if (val === 2) rawScore += 0.11;
-                else if (val === 3) rawScore += 0.20;
-            }
+      const ctxBanner = document.getElementById('chart-banner-scores').getContext('2d');
+      if (chartBannerScoresInstance) chartBannerScoresInstance.destroy();
+      chartBannerScoresInstance = new Chart(ctxBanner, {
+        type: 'bar',
+        data: {
+          labels: banners.length ? banners.map(b => `Banner ${b}`) : ['Nenhum'],
+          datasets: [{ label: 'Média de Pontuação', data: banners.length ? avgScores : [0], backgroundColor: '#004B87', borderRadius: 6 }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 1.0 } } }
+      });
+    }
 
-            const payload = {
-                id: 'EV-' + Date.now(),
-                eventDate: new Date().toISOString().split('T')[0],
-                evaluatorSigla: sigla,
-                bannerNumber: banner,
-                totalScore: parseFloat(rawScore.toFixed(2)),
-                timestamp: new Date().toLocaleString(),
-                answers: answers
-            };
+    function exportToCSV() {
+      if (evaluationsData.length === 0) { showToast('Não há dados para exportar.', 'error'); return; }
+      let csv = 'ID,Data Evento,Sigla Avaliador,Numero Banner,Pontuacao Total,Data/Hora Registro\n';
+      evaluationsData.forEach(i => { csv += `"${i.id}","${i.eventDate}","${i.evaluatorSigla}","${i.bannerNumber}","${i.totalScore}","${i.timestamp}"\n`; });
+      downloadCSV(csv, 'detalhado_avaliacoes.csv');
+    }
 
-            // Envio via POST para o Google Apps Script
-            try {
-                await fetch(GOOGLE_SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
+    function exportSummaryCSV() {
+      if (evaluationsData.length === 0) { showToast('Não há dados para exportar.', 'error'); return; }
+      let csv = 'Numero Banner,Media Pontuacao,Total Avaliacoes\n';
+      const summary = {};
+      evaluationsData.forEach(i => {
+        if(!summary[i.bannerNumber]) summary[i.bannerNumber] = { sum: 0, count: 0 };
+        summary[i.bannerNumber].sum += parseFloat(i.totalScore);
+        summary[i.bannerNumber].count += 1;
+      });
+      for(let b in summary) {
+        let avg = (summary[b].sum / summary[b].count).toFixed(3);
+        csv += `"Banner ${b}","${avg}","${summary[b].count}"\n`;
+      }
+      downloadCSV(csv, 'resumo_por_banner.csv');
+    }
 
-                showModal("Avaliação enviada com sucesso!");
-                document.getElementById("evaluationForm").reset();
-                renderQuestions();
-            } catch (error) {
-                console.error(error);
-                showModal("Erro ao enviar avaliação. Verifique sua conexão.");
-            }
-        }
+    function exportEvaluatorSummaryCSV() {
+      if (evaluationsData.length === 0) { showToast('Não há dados para exportar.', 'error'); return; }
+      let csv = 'Sigla do Avaliador,Total de Avaliacoes,Percentual\n';
+      const summary = {};
+      evaluationsData.forEach(i => {
+        if(!summary[i.evaluatorSigla]) summary[i.evaluatorSigla] = 0;
+        summary[i.evaluatorSigla] += 1;
+      });
+      const totalEvals = evaluationsData.length;
+      for(let e in summary) {
+        let pct = ((summary[e] / totalEvals) * 100).toFixed(1) + '%';
+        csv += `"${e}","${summary[e]}","${pct}"\n`;
+      }
+      downloadCSV(csv, 'resumo_por_avaliador.csv');
+    }
 
-        async function loadAdminData() {
-            try {
-                const response = await fetch(GOOGLE_SCRIPT_URL);
-                const data = await response.json();
-                allSubmissions = data || [];
-                updateAdminDashboard();
-            } catch (error) {
-                console.error("Erro ao carregar dados do admin:", error);
-                showModal("Erro ao carregar os dados da planilha.");
-            }
-        }
+    function downloadCSV(csvContent, fileName) {
+      const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.setAttribute('href', url);
+      a.setAttribute('download', fileName);
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
 
-        function updateAdminDashboard() {
-            const totalEvals = allSubmissions.length;
-            const uniqueBanners = [...new Set(allSubmissions.map(i => i.bannerNumber))].length;
-            const uniqueEvaluators = [...new Set(allSubmissions.map(i => i.evaluatorSigla))].length;
-
-            document.getElementById("statTotalEvals").innerText = totalEvals;
-            document.getElementById("statTotalBanners").innerText = uniqueBanners;
-            document.getElementById("statTotalEvaluators").innerText = uniqueEvaluators;
-
-            // Tabela Detalhada
-            const detailedTable = document.getElementById("detailedTableBody");
-            detailedTable.innerHTML = "";
-            allSubmissions.slice().reverse().forEach(item => {
-                const tr = document.createElement("tr");
-                tr.className = "hover:bg-slate-50 border-b border-slate-100";
-                tr.innerHTML = `
-                    <td class="p-3">${item.timestamp || '-'}</td>
-                    <td class="p-3 font-bold">${item.evaluatorSigla}</td>
-                    <td class="p-3">${item.bannerNumber}</td>
-                    <td class="p-3 font-semibold text-blue-900">${item.totalScore} pts</td>
-                `;
-                detailedTable.appendChild(tr);
-            });
-
-            renderChartsAndSummary();
-        }
-
-        function renderChartsAndSummary() {
-            // Agrupar média por banner
-            const bannerScores = {};
-            const bannerCounts = {};
-            allSubmissions.forEach(item => {
-                const b = item.bannerNumber;
-                if (!bannerScores[b]) { bannerScores[b] = 0; bannerCounts[b] = 0; }
-                bannerScores[b] += parseFloat(item.totalScore);
-                bannerCounts[b] += 1;
-            });
-
-            const sortedBanners = Object.keys(bannerScores).sort((a, b) => a - b);
-            const bannerAvgData = sortedBanners.map(b => (bannerScores[b] / bannerCounts[b]).toFixed(2));
-
-            // Gráfico de Média por Banner
-            const ctxBanner = document.getElementById("chartBannerScore").getContext("2d");
-            if (bannerChartInstance) bannerChartInstance.destroy();
-            bannerChartInstance = new Chart(ctxBanner, {
-                type: 'bar',
-                data: {
-                    labels: sortedBanners,
-                    datasets: [{
-                        label: 'Nota Média',
-                        data: bannerAvgData,
-                        backgroundColor: '#1e3a8a'
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false }
-            });
-
-            // Agrupar contagem por sigla
-            const evaluatorCounts = {};
-            allSubmissions.forEach(item => {
-                const sig = item.evaluatorSigla;
-                evaluatorCounts[sig] = (evaluatorCounts[sig] || 0) + 1;
-            });
-
-            const sortedSiglas = Object.keys(evaluatorCounts).sort();
-            const countsData = sortedSiglas.map(sig => evaluatorCounts[sig]);
-            const totalEvals = allSubmissions.length;
-
-            // Gráfico de Barras por Sigla
-            const ctxEvaluator = document.getElementById("chartEvaluatorCount").getContext("2d");
-            if (evaluatorChartInstance) evaluatorChartInstance.destroy();
-            evaluatorChartInstance = new Chart(ctxEvaluator, {
-                type: 'bar',
-                data: {
-                    labels: sortedSiglas,
-                    datasets: [{
-                        label: 'Qtd de Avaliações',
-                        data: countsData,
-                        backgroundColor: '#f36f21'
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false }
-            });
-
-            // Tabela Resumida por Sigla
-            const siglaTableBody = document.getElementById("siglaSummaryTableBody");
-            siglaTableBody.innerHTML = "";
-            sortedSiglas.forEach(sig => {
-                const count = evaluatorCounts[sig];
-                const percentage = totalEvals > 0 ? ((count / totalEvals) * 100).toFixed(1) : 0;
-                const tr = document.createElement("tr");
-                tr.className = "hover:bg-slate-50 border-b border-slate-100";
-                tr.innerHTML = `
-                    <td class="p-3 font-bold">${sig}</td>
-                    <td class="p-3">${count}</td>
-                    <td class="p-3 font-semibold text-emerald-600">${percentage}%</td>
-                `;
-                siglaTableBody.appendChild(tr);
-            });
-        }
-
-        function exportToCSV() {
-            if (allSubmissions.length === 0) {
-                showModal("Não há dados para exportar.");
-                return;
-            }
-            let csvContent = "data:text/csv;charset=utf-8,ID,Data,Sigla,Banner,NotaTotal,Timestamp\r\n";
-            allSubmissions.forEach(item => {
-                let row = [item.id, item.eventDate, item.evaluatorSigla, item.bannerNumber, item.totalScore, `"${item.timestamp}"`];
-                csvContent += row.join(",") + "\r\n";
-            });
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "avaliacoes_pi_fam.csv");
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-    </script>
+    function showToast(msg, type = 'success') {
+      const toast = document.getElementById('toast');
+      document.getElementById('toast-msg').innerText = msg;
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 4000);
+    }
+    function hideToast() { document.getElementById('toast').classList.add('hidden'); }
+  </script>
 </body>
 </html>
