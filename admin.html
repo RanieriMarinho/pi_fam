@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel Admin - PI FAM</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts: Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          colors: {
+            fam: {
+              navy: '#0A192F', blue: '#004B87', orange: '#F36F21',
+              lightBlue: '#00A3E0', gold: '#FFB800', goldHover: '#E0A100',
+              bg: '#F4F7FA', card: '#FFFFFF'
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-fam-bg text-gray-800 font-sans min-h-screen flex flex-col antialiased">
+
+  <!-- Header Global -->
+  <header class="bg-fam-navy text-white shadow-md sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="bg-white rounded-lg p-1.5 flex items-center justify-center shadow-sm">
+          <img src="fam.png" alt="Logo FAM" class="h-6 sm:h-7 w-auto object-contain">
+        </div>
+        <div>
+          <h1 class="font-bold text-sm sm:text-base md:text-lg leading-tight">Projeto Integrador</h1>
+          <p class="text-[10px] sm:text-xs text-blue-200">Painel do Administrador</p>
+        </div>
+      </div>
+
+      <div id="user-session" class="hidden flex items-center space-x-3 sm:space-x-4">
+        <span class="text-[11px] sm:text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-900/80 border border-blue-400 text-blue-100 flex items-center gap-1.5">
+          <i class="fa-solid fa-user-shield text-fam-gold"></i>
+          <span>Administrador</span>
+        </span>
+        <button onclick="logout()" class="text-gray-300 hover:text-white text-xs sm:text-sm flex items-center gap-1 transition-colors">
+          <i class="fa-solid fa-right-from-bracket"></i>
+          <span>Sair</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Container Principal -->
+  <main class="flex-grow max-w-7xl w-full mx-auto p-3 sm:p-6 lg:p-8">
+
+    <!-- Toast Notification Message -->
+    <div id="toast" class="hidden fixed bottom-5 right-5 z-50 flex items-center p-4 mb-4 text-gray-800 bg-white rounded-xl shadow-2xl border-l-4 border-green-500 transition-all duration-300 max-w-md w-[90%] sm:w-auto" role="alert">
+      <div id="toast-icon" class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 text-green-500 bg-green-100 rounded-lg">
+        <i class="fa-solid fa-check"></i>
+      </div>
+      <div id="toast-msg" class="ml-3 text-xs sm:text-sm font-medium">Operação realizada com sucesso.</div>
+      <button type="button" onclick="hideToast()" class="ml-auto -mx-1.5 -my-1.5 bg-white text-gray-400 hover:text-gray-900 rounded-lg p-1.5 hover:bg-gray-100 inline-flex items-center justify-center h-8 w-8">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <!-- TELA 1: LOGIN DO ADMIN -->
+    <section id="screen-login" class="flex items-center justify-center py-6 sm:py-12">
+      <div class="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
+        <div class="bg-fam-blue p-6 text-white text-center relative">
+          <div class="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-10 -mt-10 pointer-events-none"></div>
+          <i class="fa-solid fa-user-shield text-3xl sm:text-4xl mb-2 text-fam-gold"></i>
+          <h2 class="text-xl sm:text-2xl font-bold">Acesso Restrito - Admin</h2>
+          <p class="text-xs text-blue-100 mt-1">Entre com suas credenciais de administrador</p>
+        </div>
+
+        <form id="form-login" onsubmit="handleLogin(event)" class="p-5 sm:p-8 space-y-4 sm:space-y-5">
+          <div>
+            <label for="login-username" class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">Usuário</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400"><i class="fa-solid fa-user"></i></span>
+              <input type="text" id="login-username" required placeholder="Digite seu usuário" class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-300 text-gray-900 rounded-xl focus:ring-2 focus:ring-fam-blue outline-none text-sm">
+            </div>
+          </div>
+
+          <div>
+            <label for="login-password" class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">Senha</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400"><i class="fa-solid fa-lock"></i></span>
+              <input type="password" id="login-password" required placeholder="••••••••" class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-300 text-gray-900 rounded-xl focus:ring-2 focus:ring-fam-blue outline-none text-sm">
+            </div>
+          </div>
+
+          <div id="login-error" class="hidden p-3 bg-red-50 border-l-4 border-red-500 text-red-700 text-xs rounded">Usuário ou senha incorretos!</div>
+
+          <button type="submit" class="w-full bg-fam-blue hover:bg-fam-navy text-white font-semibold py-3 px-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-sm sm:text-base">
+            <span>Acessar Painel</span>
+            <i class="fa-solid fa-arrow-right text-xs"></i>
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- TELA 2: PAINEL ADMIN / DASHBOARD -->
+    <section id="screen-admin" class="hidden space-y-6">
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div>
+          <h2 class="text-lg sm:text-xl font-bold text-fam-navy flex items-center gap-2">
+            <i class="fa-solid fa-chart-line text-fam-blue"></i> Painel Geral do Administrador
+          </h2>
+          <p class="text-xs text-gray-500 mt-0.5">Sincronizado em tempo real com a planilha em nuvem.</p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+          <button onclick="renderAdminDashboard()" class="bg-fam-blue hover:bg-fam-navy text-white text-xs font-semibold px-3 py-2 rounded-xl shadow transition-all flex items-center gap-1.5">
+            <i class="fa-solid fa-rotate"></i> <span>Atualizar Dados</span>
+          </button>
+          <div class="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 w-full sm:w-auto">
+            <button onclick="exportToCSV()" class="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-2 rounded-xl shadow">Detalhado</button>
+            <button onclick="exportSummaryCSV()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-2 rounded-xl shadow">Por Banner</button>
+            <button onclick="exportEvaluatorSummaryCSV()" class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold px-3 py-2 rounded-xl shadow">Por Sigla</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 flex items-center gap-4">
+          <div class="p-3 bg-blue-50 text-fam-blue rounded-xl text-xl sm:text-2xl"><i class="fa-solid fa-file-signature"></i></div>
+          <div><p class="text-[11px] font-semibold text-gray-500 uppercase">Total de Avaliações</p><p id="kpi-total-evals" class="text-xl font-bold text-fam-navy">0</p></div>
+        </div>
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 flex items-center gap-4">
+          <div class="p-3 bg-amber-50 text-fam-gold rounded-xl text-xl sm:text-2xl"><i class="fa-solid fa-scroll"></i></div>
+          <div><p class="text-[11px] font-semibold text-gray-500 uppercase">Banners Distintos</p><p id="kpi-total-banners" class="text-xl font-bold text-fam-navy">0</p></div>
+        </div>
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 flex items-center gap-4">
+          <div class="p-3 bg-emerald-50 text-emerald-600 rounded-xl text-xl sm:text-2xl"><i class="fa-solid fa-user-check"></i></div>
+          <div><p class="text-[11px] font-semibold text-gray-500 uppercase">Avaliadores Ativos</p><p id="kpi-total-evaluators" class="text-xl font-bold text-fam-navy">0</p></div>
+        </div>
+      </div>
+
+      <!-- Charts & Evaluator Summary List -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 space-y-3">
+          <h3 class="font-bold text-gray-800 text-xs sm:text-sm"><i class="fa-solid fa-star text-fam-gold"></i> Nota Média por Banner</h3>
+          <div class="relative h-60 w-full"><canvas id="chart-banner-scores"></canvas></div>
+        </div>
+
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 space-y-3 flex flex-col">
+          <h3 class="font-bold text-gray-800 text-xs sm:text-sm"><i class="fa-solid fa-users text-fam-blue"></i> Resumo de Avaliações por Sigla</h3>
+          <div class="overflow-y-auto max-h-60 border border-gray-100 rounded-xl">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-gray-50 border-b border-gray-200 text-[11px] font-bold text-gray-600 uppercase">
+                  <th class="p-2.5 pl-4">Sigla</th>
+                  <th class="p-2.5 text-center">Total de Avaliações</th>
+                  <th class="p-2.5 pr-4 text-right">Percentual</th>
+                </tr>
+              </thead>
+              <tbody id="evaluator-summary-table-body" class="divide-y divide-gray-100 text-xs text-gray-700">
+                <tr><td colspan="3" class="p-4 text-center text-gray-400">Nenhum dado carregado.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabela -->
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+        <div class="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+          <h3 class="font-bold text-gray-800 text-xs sm:text-sm"><i class="fa-solid fa-table text-fam-blue"></i> Registros Sincronizados</h3>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse min-w-[650px]">
+            <thead>
+              <tr class="bg-gray-100/70 border-b border-gray-200 text-[11px] font-bold text-gray-600 uppercase">
+                <th class="p-3">Data Evento</th>
+                <th class="p-3">Avaliador</th>
+                <th class="p-3">Banner</th>
+                <th class="p-3 text-center">Pontuação Total</th>
+                <th class="p-3">Data/Hora Registro</th>
+              </tr>
+            </thead>
+            <tbody id="admin-table-body" class="divide-y divide-gray-100 text-xs text-gray-700"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="bg-white border-t border-gray-200 py-4 mt-auto">
+    <div class="max-w-7xl mx-auto px-4 text-center text-xs text-gray-500">&copy; 2026 FAM - Faculdade de Americana. Sistema Integrado.</div>
+  </footer>
+
+  <!-- SCRIPT DO ADMIN -->
+  <script>
+    const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwv81MJVyJDlPqSlEDebGcx_QIto-PE9Fp-NwFe26jbz92ajtAeHfp_pd9jEG96IeyUKg/exec';
+
+    let evaluationsData = [];
+    let chartBannerScoresInstance = null;
+
+    window.onload = function() {
+      const savedAdmin = sessionStorage.getItem('fam_pi_admin');
+      if (savedAdmin) {
+        showScreen('screen-admin');
+        document.getElementById('user-session').classList.remove('hidden');
+        renderAdminDashboard();
+      } else {
+        showScreen('screen-login');
+      }
+    };
+
+    function handleLogin(e) {
+      e.preventDefault();
+      const u = document.getElementById('login-username').value.trim();
+      const p = document.getElementById('login-password').value.trim();
+      const err = document.getElementById('login-error');
+      err.classList.add('hidden');
+
+      if (u === 'admin' && p === 'fam@2026') {
+        sessionStorage.setItem('fam_pi_admin', 'true');
+        showScreen('screen-admin');
+        document.getElementById('user-session').classList.remove('hidden');
+        renderAdminDashboard();
+        showToast('Login efetuado como Administrador!');
+      } else {
+        err.classList.remove('hidden');
+      }
+    }
+
+    function logout() {
+      sessionStorage.removeItem('fam_pi_admin');
+      document.getElementById('user-session').classList.add('hidden');
+      showScreen('screen-login');
+      showToast('Sessão encerrada.', 'info');
+    }
+
+    function showScreen(sId) {
+      ['screen-login', 'screen-admin'].forEach(id => document.getElementById(id).classList.add('hidden'));
+      document.getElementById(sId).classList.remove('hidden');
+    }
+
+    async function renderAdminDashboard() {
+      showToast('Carregando dados da nuvem...', 'info');
+      try {
+        const response = await fetch(GOOGLE_SCRIPT_URL);
+        evaluationsData = await response.json();
+        
+        updateAdminKPIs();
+        populateAdminTable();
+        renderAdminCharts();
+        renderEvaluatorSummaryTable();
+        showToast('Painel atualizado com sucesso!');
+      } catch (err) {
+        showToast('Erro ao carregar dados do painel.', 'error');
+      }
+    }
+
+    function updateAdminKPIs() {
+      document.getElementById('kpi-total-evals').innerText = evaluationsData.length;
+      const uniqueBanners = [...new Set(evaluationsData.map(item => item.bannerNumber))];
+      document.getElementById('kpi-total-banners').innerText = uniqueBanners.length;
+      const uniqueEvaluators = [...new Set(evaluationsData.map(item => item.evaluatorSigla))];
+      document.getElementById('kpi-total-evaluators').innerText = uniqueEvaluators.length;
+    }
+
+    function populateAdminTable() {
+      const tbody = document.getElementById('admin-table-body');
+      tbody.innerHTML = '';
+      if (evaluationsData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-400">Nenhuma avaliação registrada ainda.</td></tr>`;
+        return;
+      }
+      [...evaluationsData].reverse().forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-gray-50/80 transition-colors';
+        tr.innerHTML = `
+          <td class="p-3 font-medium">${item.eventDate}</td>
+          <td class="p-3"><span class="px-2 py-0.5 bg-blue-50 text-fam-blue rounded font-semibold text-[11px]">${item.evaluatorSigla}</span></td>
+          <td class="p-3 font-bold text-gray-800">Banner ${item.bannerNumber}</td>
+          <td class="p-3 text-center font-bold text-emerald-600">${parseFloat(item.totalScore).toFixed(2)}</td>
+          <td class="p-3 text-gray-500 text-[11px]">${item.timestamp}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderEvaluatorSummaryTable() {
+      const tbody = document.getElementById('evaluator-summary-table-body');
+      tbody.innerHTML = '';
+      
+      if (evaluationsData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-gray-400">Nenhum dado registrado.</td></tr>`;
+        return;
+      }
+
+      const evaluatorCounts = {};
+      evaluationsData.forEach(item => {
+        const sigla = item.evaluatorSigla || 'NI';
+        evaluatorCounts[sigla] = (evaluatorCounts[sigla] || 0) + 1;
+      });
+
+      const totalEvals = evaluationsData.length;
+      const sortedEvaluators = Object.keys(evaluatorCounts).sort();
+
+      sortedEvaluators.forEach(sigla => {
+        const count = evaluatorCounts[sigla];
+        const percentage = ((count / totalEvals) * 100).toFixed(1);
+
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-gray-50 transition-colors';
+        tr.innerHTML = `
+          <td class="p-2.5 pl-4"><span class="px-2 py-0.5 bg-blue-50 text-fam-blue rounded font-bold text-[11px]">${sigla}</span></td>
+          <td class="p-2.5 text-center font-semibold text-gray-800">${count}</td>
+          <td class="p-2.5 pr-4 text-right font-medium text-emerald-600">${percentage}%</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderAdminCharts() {
+      const bannerScores = {};
+
+      evaluationsData.forEach(item => {
+        if (!bannerScores[item.bannerNumber]) bannerScores[item.bannerNumber] = { sum: 0, count: 0 };
+        bannerScores[item.bannerNumber].sum += parseFloat(item.totalScore);
+        bannerScores[item.bannerNumber].count += 1;
+      });
+
+      const banners = Object.keys(bannerScores).sort();
+      const avgScores = banners.map(b => (bannerScores[b].sum / bannerScores[b].count).toFixed(2));
+
+      const ctxBanner = document.getElementById('chart-banner-scores').getContext('2d');
+      if (chartBannerScoresInstance) chartBannerScoresInstance.destroy();
+      chartBannerScoresInstance = new Chart(ctxBanner, {
+        type: 'bar',
+        data: {
+          labels: banners.length ? banners.map(b => `Banner ${b}`) : ['Nenhum'],
+          datasets: [{ label: 'Média de Pontuação', data: banners.length ? avgScores : [0], backgroundColor: '#004B87', borderRadius: 6 }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 1.0 } } }
+      });
+    }
+
+    function exportToCSV() {
+      if (evaluationsData.length === 0) { showToast('Não há dados para exportar.', 'error'); return; }
+      let csv = 'ID,Data Evento,Sigla Avaliador,Numero Banner,Pontuacao Total,Data/Hora Registro\n';
+      evaluationsData.forEach(i => { csv += `"${i.id}","${i.eventDate}","${i.evaluatorSigla}","${i.bannerNumber}","${i.totalScore}","${i.timestamp}"\n`; });
+      downloadCSV(csv, 'detalhado_avaliacoes.csv');
+    }
+
+    function exportSummaryCSV() {
+      if (evaluationsData.length === 0) { showToast('Não há dados para exportar.', 'error'); return; }
+      let csv = 'Numero Banner,Media Pontuacao,Total Avaliacoes\n';
+      const summary = {};
+      evaluationsData.forEach(i => {
+        if(!summary[i.bannerNumber]) summary[i.bannerNumber] = { sum: 0, count: 0 };
+        summary[i.bannerNumber].sum += parseFloat(i.totalScore);
+        summary[i.bannerNumber].count += 1;
+      });
+      for(let b in summary) {
+        let avg = (summary[b].sum / summary[b].count).toFixed(3);
+        csv += `"Banner ${b}","${avg}","${summary[b].count}"\n`;
+      }
+      downloadCSV(csv, 'resumo_por_banner.csv');
+    }
+
+    function exportEvaluatorSummaryCSV() {
+      if (evaluationsData.length === 0) { showToast('Não há dados para exportar.', 'error'); return; }
+      let csv = 'Sigla do Avaliador,Total de Avaliacoes,Percentual\n';
+      const summary = {};
+      evaluationsData.forEach(i => {
+        if(!summary[i.evaluatorSigla]) summary[i.evaluatorSigla] = 0;
+        summary[i.evaluatorSigla] += 1;
+      });
+      const totalEvals = evaluationsData.length;
+      for(let e in summary) {
+        let pct = ((summary[e] / totalEvals) * 100).toFixed(1) + '%';
+        csv += `"${e}","${summary[e]}","${pct}"\n`;
+      }
+      downloadCSV(csv, 'resumo_por_avaliador.csv');
+    }
+
+    function downloadCSV(csvContent, fileName) {
+      const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.setAttribute('href', url);
+      a.setAttribute('download', fileName);
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    function showToast(msg, type = 'success') {
+      const toast = document.getElementById('toast');
+      document.getElementById('toast-msg').innerText = msg;
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 4000);
+    }
+    function hideToast() { document.getElementById('toast').classList.add('hidden'); }
+  </script>
+</body>
+</html>
